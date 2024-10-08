@@ -21,4 +21,4 @@
  (name NeML)
  (synopsis "NeML compiler")
  (description "A compiler for some non-existent programming language")
- (depends ocaml dune))
+ (depends ocaml dune ppx_deriving))
