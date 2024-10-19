@@ -1,5 +1,3 @@
-(* force invariant? *)
-
 [@@@ocaml.text "/*"]
 
 (** Copyright 2024, Andrei, PavlushaSource *)
@@ -7,6 +5,8 @@
 (** SPDX-License-Identifier: MIT *)
 
 [@@@ocaml.text "/*"]
+
+open! Base
 
 type ident = Id of string [@@deriving show {with_path= false}]
 

@@ -1,5 +1,6 @@
 (library
- (name ast)
- (public_name NeML.ast)
+ (name LAst)
+ (public_name NeML.Ast)
+ (libraries base)
  (preprocess
   (pps ppx_deriving.show)))
