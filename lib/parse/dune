@@ -1,0 +1,4 @@
+(library
+ (name LParse)
+ (public_name NeML.Parse)
+ (libraries base angstrom LAst))
