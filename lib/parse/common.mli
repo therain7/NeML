@@ -17,12 +17,19 @@ val ws1 : unit t
 val ident : string -> ident t
 
 val parens : 'a t -> 'a t
+val spaced : 'a t -> 'a t
 val opt : 'a t -> 'a option t
 
-(* ======= Identifiers & Constants ======= *)
-val pvalue_id : ident t
+(* ======= Identifiers ======= *)
 val pconstr_id : ident t
+val pvalue_id : ident t
+
+val pinfix_id : ?starts:string -> unit -> ident t
+val pprefix_id : ident t
+
+(* ===== Constants, value bindings ===== *)
 val pconst : constant t
+val plet : expression t -> pattern t -> (rec_flag * value_binding list) t
 
 (* ======= Operators ======= *)
 type ('op, 'oprnd) op_kind =
