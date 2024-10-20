@@ -23,6 +23,7 @@ let ws1 = skip Char.is_whitespace *> ws
 let ident s = string s >>| fun x -> Id x
 
 let parens p = char '(' *> ws *> p <* ws <* char ')'
+let spaced p = ws1 *> p <* ws1
 let opt p = option None (p >>| Option.some)
 
 (* ======= Identifiers ======= *)
@@ -48,9 +49,6 @@ let is_keyword = function
   | _ ->
       false
 
-(* XXX: operator keywords? *)
-(* let is_keyword_op _ = false *)
-
 let pident flag =
   let is_first =
     match flag with
@@ -68,10 +66,9 @@ let pident flag =
       | _ ->
           false )
   in
+
   let id = first ^ rest in
   if is_keyword id then fail "keyword" else return (Id id)
-
-let pvalue_id = pident `LowerCase
 
 let pconstr_id =
   let keywords =
@@ -79,6 +76,46 @@ let pconstr_id =
       [ident "true"; ident "false"; ident "()"; ident "[]"; parens (ident "::")]
   in
   pident `Capitalized <|> keywords
+
+(* https://ocaml.org/manual/5.0/lex.html#sss:lex-ops-symbols *)
+
+let is_op_first_char = function
+  | '$' | '&' | '*' | '+' | '-' | '/' | '=' | '<' | '>' | '@' | '^' | '|' | '%'
+    ->
+      true
+  | _ ->
+      false
+
+let is_op_char = function
+  | ch when is_op_first_char ch ->
+      true
+  | '~' | '!' | '?' | ':' | '.' ->
+      true
+  | _ ->
+      false
+
+let is_keyword_op = function "|" | "->" -> true | _ -> false
+
+let pinfix_id ?starts () =
+  let* first =
+    Option.value_map starts ~f:string
+      ~default:(satisfy is_op_first_char >>| Char.to_string)
+  in
+  let* rest = take_while is_op_char in
+
+  let id = first ^ rest in
+  if is_keyword_op id then fail "keyword" else return (Id id)
+
+let pprefix_id =
+  let* first = string "!" in
+  let* rest = take_while is_op_char in
+
+  let id = first ^ rest in
+  if is_keyword_op id then fail "keyword" else return (Id id)
+
+let pvalue_id =
+  let pop_id = pinfix_id () <|> pprefix_id in
+  pident `LowerCase <|> parens pop_id
 
 (* ======= Constants ======= *)
 
@@ -102,6 +139,36 @@ let pconst =
 
   choice [pint; pchar; pstring]
 
+(* ====== Value bindings ====== *)
+
+(**
+  [let [rec] P1 = E1 and P2 = E2 and ...]
+  [let [rec] ValId1 PArg1 = E1 and P1 = E2 and ...]
+*)
+let plet pexpr ppat =
+  let pbinding =
+    let pfun =
+      let* id = pvalue_id in
+      let* args = ws1 *> sep_by1 ws1 ppat in
+      let* expr = ws *> char '=' *> pexpr in
+      return {pat= PatVar id; expr= ExpFun (args, expr)}
+    in
+
+    let psimple =
+      let* pat = ppat in
+      let* expr = ws *> char '=' *> pexpr in
+      return {pat; expr}
+    in
+
+    pfun <|> psimple
+  in
+
+  let prec_flag =
+    spaced (string "rec") *> return Recursive <|> ws1 *> return Nonrecursive
+  in
+
+  string "let" *> both prec_flag (sep_by1 (spaced (string "and")) pbinding)
+
 (* ======= Operators ======= *)
 
 type ('op, 'oprnd) op_kind =
@@ -117,7 +184,8 @@ let poperators ~(table : 'oprnd op_parse_table) ~(poprnd : 'oprnd t) =
   (* Convert the table to lists of infix/prefix parsers
      with explicit priorities assigned *)
   let _, prefixs, infixs =
-    List.fold table ~init:(0, [], []) ~f:(fun (prio, prefixs, infixs) (Op op) ->
+    List.fold_right table ~init:(0, [], [])
+      ~f:(fun (Op op) (prio, prefixs, infixs) ->
         match op.kind with
         | Prefix {apply} ->
             let pop = op.pop >>| fun x -> (prio, apply x) in
