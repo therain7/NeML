@@ -46,7 +46,7 @@ type 'oprnd op_parse =
 
 (**
   Order in a list sets operators' priority.
-  Last operator in a table has the highest priority
+  First operator in a table has the highest priority
 *)
 type 'oprnd op_parse_table = 'oprnd op_parse list
 

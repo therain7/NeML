@@ -53,8 +53,8 @@ let table =
 
   let alist _ lhs rhs = PatConstruct (Id "::", Some (PatTuple [lhs; rhs])) in
 
-  [ Op {pop= string "|"; kind= Infix {assoc= `Left; apply= aor}}
+  [ Op {pop= string "::"; kind= Infix {assoc= `Right; apply= alist}}
   ; Op {pop= string ","; kind= Infix {assoc= `Right; apply= atuple}}
-  ; Op {pop= string "::"; kind= Infix {assoc= `Right; apply= alist}} ]
+  ; Op {pop= string "|"; kind= Infix {assoc= `Left; apply= aor}} ]
 
 let ppat = fix (fun ppat -> poperators ~table ~poprnd:(poprnd ppat))

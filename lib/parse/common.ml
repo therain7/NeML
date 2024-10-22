@@ -186,16 +186,16 @@ type 'oprnd op_parse_table = 'oprnd op_parse list
 let poperators ~(table : 'oprnd op_parse_table) ~(poprnd : 'oprnd t) =
   (* Convert the table to lists of infix/prefix parsers
      with explicit priorities assigned *)
-  let _, prefixs, infixs =
-    List.fold_right table ~init:(0, [], [])
-      ~f:(fun (Op op) (prio, prefixs, infixs) ->
+  let min_prio, prefixs, infixs =
+    List.fold_left table ~init:(0, [], [])
+      ~f:(fun (prio, prefixs, infixs) (Op op) ->
         match op.kind with
         | Prefix {apply} ->
             let pop = op.pop >>| fun x -> (prio, apply x) in
-            (prio + 1, pop :: prefixs, infixs)
+            (prio - 1, pop :: prefixs, infixs)
         | Infix {assoc; apply} ->
             let pop = op.pop >>| fun x -> (assoc, prio, apply x) in
-            (prio + 1, prefixs, pop :: infixs) )
+            (prio - 1, prefixs, pop :: infixs) )
   in
 
   (* Pratt parser
@@ -224,4 +224,4 @@ let poperators ~(table : 'oprnd op_parse_table) ~(poprnd : 'oprnd t) =
     >>| List.fold ~init:lhs ~f:(fun acc (apply, oprnd) -> apply acc oprnd)
   in
 
-  helper 0
+  helper min_prio
