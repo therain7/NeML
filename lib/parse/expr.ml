@@ -104,11 +104,9 @@ let table pexpr =
         ExpTuple [lhs; rhs]
   in
 
-  let ainfix op_id lhs rhs = ExpApply (ExpApply (ExpIdent op_id, lhs), rhs) in
-
   let alist _ lhs rhs = ExpConstruct (Id "::", Some (ExpTuple [lhs; rhs])) in
 
-  let aprefix_minus _ rhs = ExpApply (ExpIdent (Id "~-"), rhs) in
+  let ainfix op_id lhs rhs = ExpApply (ExpApply (ExpIdent op_id, lhs), rhs) in
 
   let aapply _ lhs rhs =
     match lhs with
@@ -122,13 +120,28 @@ let table pexpr =
 
   let aprefix id rhs = ExpApply (ExpIdent id, rhs) in
 
-  [ Op {pop= string ";"; kind= Infix {assoc= `Right; apply= aseq}}
-    (* XXX: severe backtracking when else not found *)
-  ; Op {pop= pif_else; kind= Prefix {apply= aif_else}}
-  ; Op {pop= pif; kind= Prefix {apply= aif}}
-  ; Op {pop= string ","; kind= Infix {assoc= `Right; apply= atuple}}
-  ; Op {pop= ident "||"; kind= Infix {assoc= `Right; apply= ainfix}}
-  ; Op {pop= ident "&&"; kind= Infix {assoc= `Right; apply= ainfix}}
+  [ Op {pop= pprefix_id; kind= Prefix {apply= aprefix}}
+  ; Op {pop= unit; kind= Infix {assoc= `Left; apply= aapply}}
+  ; Op
+      { pop= string "-" *> return (Id "~-") <|> string "+" *> return (Id "~+")
+      ; kind= Prefix {apply= aprefix} }
+  ; Op
+      { pop= pinfix_id ~starts:"**" ()
+      ; kind= Infix {assoc= `Right; apply= ainfix} }
+  ; Op
+      { pop=
+          choice
+            [ pinfix_id ~starts:"*" ()
+            ; pinfix_id ~starts:"/" ()
+            ; pinfix_id ~starts:"%" () ]
+      ; kind= Infix {assoc= `Left; apply= ainfix} }
+  ; Op
+      { pop= pinfix_id ~starts:"+" () <|> pinfix_id ~starts:"-" ()
+      ; kind= Infix {assoc= `Left; apply= ainfix} }
+  ; Op {pop= string "::"; kind= Infix {assoc= `Right; apply= alist}}
+  ; Op
+      { pop= pinfix_id ~starts:"@" () <|> pinfix_id ~starts:"^" ()
+      ; kind= Infix {assoc= `Right; apply= ainfix} }
   ; Op
       { pop=
           choice
@@ -140,28 +153,13 @@ let table pexpr =
             ; pinfix_id ~starts:"$" ()
             ; ident "!=" ]
       ; kind= Infix {assoc= `Left; apply= ainfix} }
-  ; Op
-      { pop= pinfix_id ~starts:"@" () <|> pinfix_id ~starts:"^" ()
-      ; kind= Infix {assoc= `Right; apply= ainfix} }
-  ; Op {pop= string "::"; kind= Infix {assoc= `Right; apply= alist}}
-  ; Op
-      { pop= pinfix_id ~starts:"+" () <|> pinfix_id ~starts:"-" ()
-      ; kind= Infix {assoc= `Left; apply= ainfix} }
-  ; Op
-      { pop=
-          choice
-            [ pinfix_id ~starts:"*" ()
-            ; pinfix_id ~starts:"/" ()
-            ; pinfix_id ~starts:"%" () ]
-      ; kind= Infix {assoc= `Left; apply= ainfix} }
-  ; Op
-      { pop= pinfix_id ~starts:"**" ()
-      ; kind= Infix {assoc= `Right; apply= ainfix} }
-  ; Op {pop= string "-"; kind= Prefix {apply= aprefix_minus}}
-  ; Op {pop= unit; kind= Infix {assoc= `Left; apply= aapply}}
-  ; Op
-      { pop= pprefix_id <|> string "+" *> return (Id "~+")
-      ; kind= Prefix {apply= aprefix} } ]
+  ; Op {pop= ident "&&"; kind= Infix {assoc= `Right; apply= ainfix}}
+  ; Op {pop= ident "||"; kind= Infix {assoc= `Right; apply= ainfix}}
+  ; Op {pop= string ","; kind= Infix {assoc= `Right; apply= atuple}}
+    (* XXX: severe backtracking when else not found *)
+  ; Op {pop= pif; kind= Prefix {apply= aif}}
+  ; Op {pop= pif_else; kind= Prefix {apply= aif_else}}
+  ; Op {pop= string ";"; kind= Infix {assoc= `Right; apply= aseq}} ]
 
 let pexpr =
   fix (fun pexpr -> poperators ~table:(table pexpr) ~poprnd:(poprnd pexpr))

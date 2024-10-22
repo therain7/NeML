@@ -52,7 +52,7 @@ let table =
         TyTuple [lhs; rhs]
   in
 
-  [ Op {pop= string "->"; kind= Infix {assoc= `Right; apply= aarr}}
-  ; Op {pop= string "*"; kind= Infix {assoc= `Right; apply= atuple}} ]
+  [ Op {pop= string "*"; kind= Infix {assoc= `Right; apply= atuple}}
+  ; Op {pop= string "->"; kind= Infix {assoc= `Right; apply= aarr}} ]
 
 let pty = fix (fun pty -> poperators ~table ~poprnd:(papp pty))
