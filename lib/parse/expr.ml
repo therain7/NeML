@@ -17,7 +17,7 @@ open Pat
 
 let pident = pvalue_id >>| fun id -> ExpIdent id
 let pconst = pconst >>| fun const -> ExpConst const
-let pconstruct = pconstr_id >>| fun id -> ExpConstruct (id, None)
+let pconstruct = pconstruct_id >>| fun id -> ExpConstruct (id, None)
 
 (**
   [let P1 = E1 and P2 = E2 and ... in E]

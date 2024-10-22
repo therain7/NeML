@@ -20,7 +20,7 @@ let pconst = pconst >>| fun const -> PatConst const
 
 (** [Cons (hd, tl)] *)
 let pconstruct poprnd =
-  let* id = pconstr_id in
+  let* id = pconstruct_id in
   let* arg = opt poprnd in
   return (PatConstruct (id, arg))
 
