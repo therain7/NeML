@@ -21,8 +21,10 @@ val spaced : 'a t -> 'a t
 val opt : 'a t -> 'a option t
 
 (* ======= Identifiers ======= *)
-val pconstr_id : ident t
+val pconstruct_id : ident t
 val pvalue_id : ident t
+val pty_var_id : ident t
+val pty_con_id : ident t
 
 val pinfix_id : ?starts:string -> unit -> ident t
 val pprefix_id : ident t

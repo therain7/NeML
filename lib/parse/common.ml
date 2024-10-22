@@ -70,7 +70,7 @@ let pident flag =
   let id = first ^ rest in
   if is_keyword id then fail "keyword" else return (Id id)
 
-let pconstr_id =
+let pconstruct_id =
   let keywords =
     choice
       [ident "true"; ident "false"; ident "()"; ident "[]"; parens (ident "::")]
@@ -116,6 +116,9 @@ let pprefix_id =
 let pvalue_id =
   let pop_id = pinfix_id () <|> pprefix_id in
   pident `LowerCase <|> parens pop_id
+
+let pty_var_id = char '\'' *> ws *> (pident `LowerCase <|> pident `Capitalized)
+let pty_con_id = pident `LowerCase
 
 (* ======= Constants ======= *)
 
