@@ -15,10 +15,10 @@ open LAst
 let unit = return ()
 
 let skip_ws = skip_while Char.is_whitespace
-let skip_comments = string "(*" *> many_till any_char (string "*)") *> unit
+let skip_comment = string "(*" *> many_till any_char (string "*)") *> unit
 
-let ws = skip_ws *> sep_by skip_ws skip_comments *> unit
-let ws1 = skip Char.is_whitespace *> ws
+let ws = skip_ws *> sep_by skip_ws skip_comment *> skip_ws
+let ws1 = (skip Char.is_whitespace <|> skip_comment) *> ws
 
 let ident s = string s >>| fun x -> Id x
 
