@@ -1,0 +1,6 @@
+(library
+ (name ParseTest)
+ (libraries base stdio LAst LParse)
+ (preprocess
+  (pps ppx_expect))
+ (inline_tests))
