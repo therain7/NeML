@@ -8,6 +8,13 @@
 
 open! Base
 
+(** List containing at least 1 element *)
+type 'a list1 = 'a * 'a list [@@deriving show {with_path= false}]
+
+(** List containing at least 2 elements *)
+type 'a list2 = 'a * 'a * 'a list [@@deriving show {with_path= false}]
+
+(** Identifiers **)
 type ident = Id of string [@@deriving show {with_path= false}]
 
 type constant =
@@ -21,7 +28,7 @@ type constant =
 type ty =
   | TyVar of ident  (** A type variable such as ['a] *)
   | TyArr of ty * ty  (** [T1 -> T2] *)
-  | TyTuple of ty list  (** [T1 * ... * Tn]. Invariant: [n >= 2] *)
+  | TyTuple of ty list2  (** [T1 * ... * Tn] *)
   | TyCon of ident * ty list
       (** [TyCon(tconstr, l)] represents:
           - [tconstr]               when [l=[]]
@@ -35,7 +42,7 @@ type pattern =
   | PatAny  (** The pattern [_] *)
   | PatVar of ident  (** A variable pattern such as [x] *)
   | PatConst of constant  (** Patterns such as [1], ['a'], ["hello"], [1.5] *)
-  | PatTuple of pattern list  (** [(P1, ..., Pn)]. Invariant: [n >= 2] *)
+  | PatTuple of pattern list2  (** [(P1, ..., Pn)] *)
   | PatOr of pattern * pattern  (** [P1 | P2] *)
   | PatConstruct of ident * pattern option
       (** [PatConstruct(C, arg)] represents:
@@ -62,20 +69,17 @@ and expression =
   | ExpIdent of ident  (** Identifiers such as [x], [fact] *)
   | ExpConst of constant
       (** Expression constant such as [1], ['a'], ["hello"], [1.5] *)
-  | ExpLet of rec_flag * value_binding list * expression
+  | ExpLet of rec_flag * value_binding list1 * expression
       (** [ExpLet(flag, [(P1,E1) ; ... ; (Pn,En)], E)] represents:
           - [let P1 = E1 and ... and Pn = EN in E]     when [flag] is [Nonrecursive]
           - [let rec P1 = E1 and ... and Pn = EN in E] when [flag] is [Recursive]
-          Invariant: [n >= 1]
         *)
-  | ExpFun of pattern list * expression
-      (** [fun P1 ... Pn -> E]. Invariant: [n >= 1] *)
-  | ExpFunction of case list
-      (** [function C1 | ... | Cn]. Invariant: [n >= 1] *)
+  | ExpFun of pattern list1 * expression  (** [fun P1 ... Pn -> E] *)
+  | ExpFunction of case list1  (** [function C1 | ... | Cn] *)
   | ExpApply of expression * expression  (** [E1 E2] *)
-  | ExpMatch of expression * case list
-      (** [match E with P1 -> E1 | ... | Pn -> En]. Invariant: [n >= 1] *)
-  | ExpTuple of expression list  (** [(E1, ..., En)]. Invariant: [n >= 2] *)
+  | ExpMatch of expression * case list1
+      (** [match E with P1 -> E1 | ... | Pn -> En] *)
+  | ExpTuple of expression list2  (** [(E1, ..., En)] *)
   | ExpConstruct of ident * expression option
       (** [ExpConstruct(C, exp)] represents:
           - [C]               when [exp] is [None]
@@ -101,11 +105,10 @@ type type_decl = {id: ident; params: ident list; variants: constructor_decl list
 type structure_item =
   | StrEval of expression  (** [E] *)
   | StrType of type_decl  (** [type ('a, 'b) ab = A of T1 | B of T2 ...] *)
-  | StrLet of rec_flag * value_binding list
+  | StrLet of rec_flag * value_binding list1
       (** [StrLet(flag, [(P1, E1) ; ... ; (Pn, En)])] represents:
           - [let P1 = E1 and ... and Pn = EN]      when [flag] is [Nonrecursive]
           - [let rec P1 = E1 and ... and Pn = EN ] when [flag] is [Recursive]
-          Invariant: [n >= 1]
         *)
 [@@deriving show {with_path= false}]
 
