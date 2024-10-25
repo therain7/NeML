@@ -88,7 +88,7 @@ and expression =
         *)
   | ExpIfThenElse of expression * expression * expression option
       (** [if E1 then E2 else E3] *)
-  | ExpSeq of expression * expression  (** [E1; E2] *)
+  | ExpSeq of expression list2  (** [E1; E2] *)
   | ExpConstraint of expression * ty  (** [(E : T)] *)
 [@@deriving show {with_path= false}]
 
