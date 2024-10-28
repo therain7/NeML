@@ -30,7 +30,8 @@ let plist ppat =
     sep_by1 (ws *> char ';') ppat
     >>| List.fold_right
           ~init:(PatConstruct (Id "[]", None))
-          ~f:(fun pat acc -> PatConstruct (Id "::", Some (PatTuple [pat; acc])))
+          ~f:(fun pat acc ->
+            PatConstruct (Id "::", Some (PatTuple (pat, acc, []))) )
   in
   char '[' *> pelements <* ws <* opt (char ';') <* ws <* char ']'
 
@@ -45,13 +46,15 @@ let table =
   let aor _ lhs rhs = PatOr (lhs, rhs) in
 
   let atuple _ lhs = function
-    | PatTuple tl ->
-        PatTuple (lhs :: tl)
+    | PatTuple (fst, snd, tl) ->
+        PatTuple (lhs, fst, snd :: tl)
     | rhs ->
-        PatTuple [lhs; rhs]
+        PatTuple (lhs, rhs, [])
   in
 
-  let alist _ lhs rhs = PatConstruct (Id "::", Some (PatTuple [lhs; rhs])) in
+  let alist _ lhs rhs =
+    PatConstruct (Id "::", Some (PatTuple (lhs, rhs, [])))
+  in
 
   [ Op {pop= string "::"; kind= Infix {assoc= `Right; apply= alist}}
   ; Op {pop= string ","; kind= Infix {assoc= `Right; apply= atuple}}

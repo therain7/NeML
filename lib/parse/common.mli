@@ -11,6 +11,8 @@ open Angstrom
 open LAst
 
 (* ======= Utils ======= *)
+val list1_exn : 'a list -> 'a list1
+
 val unit : unit t
 val ws : unit t
 val ws1 : unit t
@@ -31,7 +33,7 @@ val pprefix_id : ident t
 
 (* ===== Constants, value bindings ===== *)
 val pconst : constant t
-val plet : expression t -> pattern t -> (rec_flag * value_binding list) t
+val plet : expression t -> pattern t -> (rec_flag * value_binding list1) t
 
 (* ======= Operators ======= *)
 type ('op, 'oprnd) op_kind =

@@ -46,10 +46,10 @@ let table =
   let aarr _ lhs rhs = TyArr (lhs, rhs) in
 
   let atuple _ lhs = function
-    | TyTuple tl ->
-        TyTuple (lhs :: tl)
+    | TyTuple (fst, snd, tl) ->
+        TyTuple (lhs, fst, snd :: tl)
     | rhs ->
-        TyTuple [lhs; rhs]
+        TyTuple (lhs, rhs, [])
   in
 
   [ Op {pop= string "*"; kind= Infix {assoc= `Right; apply= atuple}}

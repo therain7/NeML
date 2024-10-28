@@ -30,7 +30,7 @@ let plet pexpr =
 
 (** [fun P1 ... Pn -> E] *)
 let pfun pexpr =
-  let* args = string "fun" *> ws1 *> sep_by1 ws1 ppat in
+  let* args = string "fun" *> ws1 *> sep_by1 ws1 ppat >>| list1_exn in
   let* expr = ws *> string "->" *> pexpr in
   return (ExpFun (args, expr))
 
@@ -41,7 +41,7 @@ let pcases_ pexpr =
     return {left; right}
   in
   let pipe (* optional | *) = ws <* char '|' <|> ws1 in
-  pipe *> sep_by1 (ws *> char '|') pcase
+  pipe *> sep_by1 (ws *> char '|') pcase >>| list1_exn
 
 (** [match E0 with P1 -> E1 | ... | Pn -> En] *)
 let pmatch pexpr =
@@ -56,11 +56,12 @@ let pfunction pexpr =
 (** [a; b; c] *)
 let plist pexpr =
   let nil = ExpConstruct (Id "[]", None) in
-  let list hd tl = ExpConstruct (Id "::", Some (ExpTuple [hd; tl])) in
+  let list hd tl = ExpConstruct (Id "::", Some (ExpTuple (hd, tl, []))) in
 
-  let rec to_construct = function
-    | ExpSeq (e1, e2) ->
-        list e1 (to_construct e2)
+  let to_construct = function
+    | ExpSeq (e1, e2, tl) ->
+        let tl = List.fold_right tl ~init:nil ~f:list in
+        list e1 (list e2 tl)
     | e ->
         list e nil
   in
@@ -82,7 +83,12 @@ let poprnd pexpr =
 (* ======= Operators ======= *)
 
 let table pexpr =
-  let aseq _ lhs rhs = ExpSeq (lhs, rhs) in
+  let aseq _ lhs = function
+    | ExpSeq (fst, snd, tl) ->
+        ExpSeq (lhs, fst, snd :: tl)
+    | rhs ->
+        ExpSeq (lhs, rhs, [])
+  in
 
   let pif =
     let* if_ = string "if" *> ws1 *> pexpr in
@@ -98,13 +104,15 @@ let table pexpr =
   let aif_else (if_, then_) else_ = ExpIfThenElse (if_, then_, Some else_) in
 
   let atuple _ lhs = function
-    | ExpTuple tl ->
-        ExpTuple (lhs :: tl)
+    | ExpTuple (fst, snd, tl) ->
+        ExpTuple (lhs, fst, snd :: tl)
     | rhs ->
-        ExpTuple [lhs; rhs]
+        ExpTuple (lhs, rhs, [])
   in
 
-  let alist _ lhs rhs = ExpConstruct (Id "::", Some (ExpTuple [lhs; rhs])) in
+  let alist _ lhs rhs =
+    ExpConstruct (Id "::", Some (ExpTuple (lhs, rhs, [])))
+  in
 
   let ainfix op_id lhs rhs = ExpApply (ExpApply (ExpIdent op_id, lhs), rhs) in
 

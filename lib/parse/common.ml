@@ -12,6 +12,12 @@ open LAst
 
 (* ======= Utils ======= *)
 
+let list1_exn = function
+  | hd :: tl ->
+      (hd, tl)
+  | [] ->
+      raise (Invalid_argument "empty list")
+
 let unit = return ()
 
 let skip_ws = skip_while Char.is_whitespace
@@ -152,7 +158,7 @@ let plet pexpr ppat =
   let pbinding =
     let pfun =
       let* id = pvalue_id in
-      let* args = ws1 *> sep_by1 ws1 ppat in
+      let* args = ws1 *> sep_by1 ws1 ppat >>| list1_exn in
       let* expr = ws *> char '=' *> pexpr in
       return {pat= PatVar id; expr= ExpFun (args, expr)}
     in
@@ -166,11 +172,14 @@ let plet pexpr ppat =
     pfun <|> psimple
   in
 
-  let prec_flag =
-    spaced (string "rec") *> return Recursive <|> ws1 *> return Nonrecursive
+  let* rec_flag =
+    string "let"
+    *> choice
+         [spaced (string "rec") *> return Recursive; ws1 *> return Nonrecursive]
   in
+  let* bindings = sep_by1 (spaced (string "and")) pbinding >>| list1_exn in
 
-  string "let" *> both prec_flag (sep_by1 (spaced (string "and")) pbinding)
+  return (rec_flag, bindings)
 
 (* ======= Operators ======= *)
 
