@@ -51,5 +51,5 @@ let peval = Expr.pexpr >>| fun expr -> StrEval expr
 let pstr_item = ws *> choice [plet; pty_decl; peval]
 
 let pstr =
-  let sep = ws *> opt (string ";;") in
-  sep_by sep pstr_item <* sep
+  let sep = ws <* string ";;" <|> ws1 in
+  sep_by sep pstr_item <* ws <* opt (string ";;")
