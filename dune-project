@@ -21,4 +21,4 @@
  (name NeML)
  (synopsis "NeML compiler")
  (description "A compiler for some non-existent programming language")
- (depends ocaml dune base angstrom ppx_deriving))
+ (depends ocaml dune base stdio angstrom ppx_deriving ppx_expect))
