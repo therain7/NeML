@@ -36,20 +36,18 @@ val pconst : constant t
 val plet : expression t -> pattern t -> (rec_flag * value_binding list1) t
 
 (* ======= Operators ======= *)
-type ('op, 'oprnd) op_kind =
-  | Prefix of {apply: 'op -> 'oprnd -> 'oprnd}
-  | Infix of {assoc: [`Left | `Right]; apply: 'op -> 'oprnd -> 'oprnd -> 'oprnd}
+type 'oprnd operator =
+  | Prefix of ('oprnd -> 'oprnd) t  (** Prefix operator *)
+  | InfixN of ('oprnd list2 -> 'oprnd) t
+      (** Non-associative infix operator. Parsed to a list of operands *)
+  | InfixL of ('oprnd -> 'oprnd -> 'oprnd) t
+      (** Left associative infix operator *)
+  | InfixR of ('oprnd -> 'oprnd -> 'oprnd) t
+      (** Right associative infix operator *)
 
-type 'oprnd op_parse =
-  | Op :
-      { pop: 'op t  (** Operator symbol parser *)
-      ; kind: ('op, 'oprnd) op_kind  (** Kind of an operator *) }
-      -> 'oprnd op_parse
-
+val poperators : table:'oprnd operator list list -> poprnd:'oprnd t -> 'oprnd t
 (**
-  Order in a list sets operators' priority.
-  First operator in a table has the highest priority
-*)
-type 'oprnd op_parse_table = 'oprnd op_parse list
-
-val poperators : table:'oprnd op_parse_table -> poprnd:'oprnd t -> 'oprnd t
+  Table is ordered in descending precedence.
+  All operators in one list have the same precedence
+  (but may have different associativity)
+ *)

@@ -43,16 +43,9 @@ let papp pty =
   pcons arg
 
 let table =
-  let aarr _ lhs rhs = TyArr (lhs, rhs) in
+  let ptuple = ws *> string "*" >>| fun _ list2 -> TyTuple list2 in
+  let parr = ws *> string "->" >>| fun _ lhs rhs -> TyArr (lhs, rhs) in
 
-  let atuple _ lhs = function
-    | TyTuple (fst, snd, tl) ->
-        TyTuple (lhs, fst, snd :: tl)
-    | rhs ->
-        TyTuple (lhs, rhs, [])
-  in
-
-  [ Op {pop= string "*"; kind= Infix {assoc= `Right; apply= atuple}}
-  ; Op {pop= string "->"; kind= Infix {assoc= `Right; apply= aarr}} ]
+  [[InfixN ptuple]; [InfixR parr]]
 
 let pty = fix (fun pty -> poperators ~table ~poprnd:(papp pty))

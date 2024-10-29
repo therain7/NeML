@@ -67,6 +67,16 @@ let plist pexpr =
   in
   char '[' *> (pexpr >>| to_construct) <* ws <* opt (char ';') <* ws <* char ']'
 
+(** [if a then b else c] *)
+let pif pexpr =
+  let* if' = string "if" *> ws1 *> pexpr in
+  let* then' = spaced (string "then") *> pexpr in
+  let* else' =
+    opt (ws1 *> string "else")
+    >>= function Some _ -> ws1 *> pexpr >>| Option.some | None -> return None
+  in
+  return (ExpIfThenElse (if', then', else'))
+
 let poprnd pexpr =
   ws
   *> choice
@@ -78,45 +88,19 @@ let poprnd pexpr =
        ; pmatch pexpr
        ; pfunction pexpr
        ; plist pexpr
+       ; pif pexpr
        ; parens pexpr ]
 
 (* ======= Operators ======= *)
 
-let table pexpr =
-  let aseq _ lhs = function
-    | ExpSeq (fst, snd, tl) ->
-        ExpSeq (lhs, fst, snd :: tl)
-    | rhs ->
-        ExpSeq (lhs, rhs, [])
+let table =
+  let pprefix1 =
+    ws *> pprefix_id >>| fun id rhs -> ExpApply (ExpIdent id, rhs)
   in
 
-  let pif =
-    let* if_ = string "if" *> ws1 *> pexpr in
-    spaced (string "then") *> return if_
-  in
-  let aif if_ then_ = ExpIfThenElse (if_, then_, None) in
-
-  let pif_else =
-    let* if_ = string "if" *> ws1 *> pexpr in
-    let* then_ = spaced (string "then") *> pexpr in
-    spaced (string "else") *> return (if_, then_)
-  in
-  let aif_else (if_, then_) else_ = ExpIfThenElse (if_, then_, Some else_) in
-
-  let atuple _ lhs = function
-    | ExpTuple (fst, snd, tl) ->
-        ExpTuple (lhs, fst, snd :: tl)
-    | rhs ->
-        ExpTuple (lhs, rhs, [])
-  in
-
-  let alist _ lhs rhs =
-    ExpConstruct (Id "::", Some (ExpTuple (lhs, rhs, [])))
-  in
-
-  let ainfix op_id lhs rhs = ExpApply (ExpApply (ExpIdent op_id, lhs), rhs) in
-
-  let aapply _ lhs rhs =
+  let papply =
+    ws1
+    >>| fun _ lhs rhs ->
     match lhs with
     | ExpConstruct (id, None) ->
         (* constructor application *)
@@ -126,48 +110,68 @@ let table pexpr =
         ExpApply (lhs, rhs)
   in
 
-  let aprefix id rhs = ExpApply (ExpIdent id, rhs) in
+  let pprefix2 =
+    ws *> choice [string "-" *> return (Id "~-"); string "+" *> return (Id "~+")]
+    >>| fun id rhs -> ExpApply (ExpIdent id, rhs)
+  in
 
-  [ Op {pop= pprefix_id; kind= Prefix {apply= aprefix}}
-  ; Op {pop= unit; kind= Infix {assoc= `Left; apply= aapply}}
-  ; Op
-      { pop= string "-" *> return (Id "~-") <|> string "+" *> return (Id "~+")
-      ; kind= Prefix {apply= aprefix} }
-  ; Op
-      { pop= pinfix_id ~starts:"**" ()
-      ; kind= Infix {assoc= `Right; apply= ainfix} }
-  ; Op
-      { pop=
-          choice
-            [ pinfix_id ~starts:"*" ()
-            ; pinfix_id ~starts:"/" ()
-            ; pinfix_id ~starts:"%" () ]
-      ; kind= Infix {assoc= `Left; apply= ainfix} }
-  ; Op
-      { pop= pinfix_id ~starts:"+" () <|> pinfix_id ~starts:"-" ()
-      ; kind= Infix {assoc= `Left; apply= ainfix} }
-  ; Op {pop= string "::"; kind= Infix {assoc= `Right; apply= alist}}
-  ; Op
-      { pop= pinfix_id ~starts:"@" () <|> pinfix_id ~starts:"^" ()
-      ; kind= Infix {assoc= `Right; apply= ainfix} }
-  ; Op
-      { pop=
-          choice
-            [ pinfix_id ~starts:"=" ()
-            ; pinfix_id ~starts:"<" ()
-            ; pinfix_id ~starts:">" ()
-            ; pinfix_id ~starts:"|" ()
-            ; pinfix_id ~starts:"&" ()
-            ; pinfix_id ~starts:"$" ()
-            ; ident "!=" ]
-      ; kind= Infix {assoc= `Left; apply= ainfix} }
-  ; Op {pop= ident "&&"; kind= Infix {assoc= `Right; apply= ainfix}}
-  ; Op {pop= ident "||"; kind= Infix {assoc= `Right; apply= ainfix}}
-  ; Op {pop= string ","; kind= Infix {assoc= `Right; apply= atuple}}
-    (* XXX: severe backtracking when else not found *)
-  ; Op {pop= pif; kind= Prefix {apply= aif}}
-  ; Op {pop= pif_else; kind= Prefix {apply= aif_else}}
-  ; Op {pop= string ";"; kind= Infix {assoc= `Right; apply= aseq}} ]
+  let ainfix id lhs rhs = ExpApply (ExpApply (ExpIdent id, lhs), rhs) in
 
-let pexpr =
-  fix (fun pexpr -> poperators ~table:(table pexpr) ~poprnd:(poprnd pexpr))
+  let pinfix1 = ws *> pinfix_id ~starts:"**" () >>| ainfix in
+
+  let pinfix2 =
+    ws
+    *> choice
+         [ pinfix_id ~starts:"*" ()
+         ; pinfix_id ~starts:"/" ()
+         ; pinfix_id ~starts:"%" () ]
+    >>| ainfix
+  in
+
+  let pinfix3 =
+    ws *> choice [pinfix_id ~starts:"+" (); pinfix_id ~starts:"-" ()] >>| ainfix
+  in
+
+  let plist =
+    ws *> string "::"
+    >>| fun _ lhs rhs -> ExpConstruct (Id "::", Some (ExpTuple (lhs, rhs, [])))
+  in
+
+  let pinfix4 =
+    ws *> choice [pinfix_id ~starts:"@" (); pinfix_id ~starts:"^" ()] >>| ainfix
+  in
+
+  let pinfix5 =
+    ws
+    *> choice
+         [ pinfix_id ~starts:"=" ()
+         ; pinfix_id ~starts:"<" ()
+         ; pinfix_id ~starts:">" ()
+         ; pinfix_id ~starts:"|" ()
+         ; pinfix_id ~starts:"&" ()
+         ; pinfix_id ~starts:"$" ()
+         ; ident "!=" ]
+    >>| ainfix
+  in
+
+  let pinfix6 = ws *> ident "&&" >>| ainfix in
+  let pinfix7 = ws *> ident "||" >>| ainfix in
+
+  let ptuple = ws *> string "," >>| fun _ list2 -> ExpTuple list2 in
+  let pseq = ws *> string ";" >>| fun _ list2 -> ExpSeq list2 in
+
+  [ [Prefix pprefix1]
+  ; [InfixL papply]
+  ; [Prefix pprefix2]
+  ; [InfixR pinfix1]
+  ; [InfixL pinfix2]
+  ; [InfixL pinfix3]
+  ; [InfixR plist]
+  ; [InfixR pinfix4]
+  ; [InfixL pinfix5]
+  ; [InfixR pinfix6]
+  ; [InfixR pinfix7]
+  ; [InfixN ptuple]
+  ; [InfixN pseq] ]
+
+let pexpr = fix (fun pexpr -> poperators ~table ~poprnd:(poprnd pexpr))
