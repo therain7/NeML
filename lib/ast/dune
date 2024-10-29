@@ -3,4 +3,6 @@
  (public_name NeML.Ast)
  (libraries base)
  (preprocess
-  (pps ppx_deriving.show)))
+  (pps ppx_deriving.show))
+ (instrumentation
+  (backend bisect_ppx)))
