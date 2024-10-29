@@ -43,21 +43,13 @@ let poprnd ppat =
 (* ======= Operators ======= *)
 
 let table =
-  let aor _ lhs rhs = PatOr (lhs, rhs) in
-
-  let atuple _ lhs = function
-    | PatTuple (fst, snd, tl) ->
-        PatTuple (lhs, fst, snd :: tl)
-    | rhs ->
-        PatTuple (lhs, rhs, [])
+  let plist =
+    ws *> string "::"
+    >>| fun _ lhs rhs -> PatConstruct (Id "::", Some (PatTuple (lhs, rhs, [])))
   in
+  let ptuple = ws *> string "," >>| fun _ list2 -> PatTuple list2 in
+  let por = ws *> string "|" >>| fun _ lhs rhs -> PatOr (lhs, rhs) in
 
-  let alist _ lhs rhs =
-    PatConstruct (Id "::", Some (PatTuple (lhs, rhs, [])))
-  in
-
-  [ Op {pop= string "::"; kind= Infix {assoc= `Right; apply= alist}}
-  ; Op {pop= string ","; kind= Infix {assoc= `Right; apply= atuple}}
-  ; Op {pop= string "|"; kind= Infix {assoc= `Left; apply= aor}} ]
+  [[InfixR plist]; [InfixN ptuple]; [InfixL por]]
 
 let ppat = fix (fun ppat -> poperators ~table ~poprnd:(poprnd ppat))

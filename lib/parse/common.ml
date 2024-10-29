@@ -183,54 +183,57 @@ let plet pexpr ppat =
 
 (* ======= Operators ======= *)
 
-type ('op, 'oprnd) op_kind =
-  | Prefix of {apply: 'op -> 'oprnd -> 'oprnd}
-  | Infix of {assoc: [`Left | `Right]; apply: 'op -> 'oprnd -> 'oprnd -> 'oprnd}
+type 'oprnd operator =
+  | Prefix of ('oprnd -> 'oprnd) t
+  | InfixN of ('oprnd list2 -> 'oprnd) t
+  | InfixL of ('oprnd -> 'oprnd -> 'oprnd) t
+  | InfixR of ('oprnd -> 'oprnd -> 'oprnd) t
 
-type 'oprnd op_parse =
-  | Op : {pop: 'op t; kind: ('op, 'oprnd) op_kind} -> 'oprnd op_parse
+let pprefix pop prhs =
+  let pop_many =
+    let* hd, tl = many1 pop >>| list1_exn in
+    return @@ List.fold_left tl ~init:hd ~f:(fun acc f x -> acc (f x))
+  in
+  let* apply = option Fn.id pop_many in
+  let* rhs = prhs in
+  return (apply rhs)
 
-type 'oprnd op_parse_table = 'oprnd op_parse list
+let pinfixn (pop : ('oprnd list2 -> 'oprnd) t) prhs fst =
+  let* apply = pop in
+  let* snd, tl = sep_by1 pop prhs >>| list1_exn in
+  return @@ apply (fst, snd, tl)
 
-let poperators ~(table : 'oprnd op_parse_table) ~(poprnd : 'oprnd t) =
-  (* Convert the table to lists of infix/prefix parsers
-     with explicit priorities assigned *)
-  let min_prio, prefixs, infixs =
-    List.fold_left table ~init:(0, [], [])
-      ~f:(fun (prio, prefixs, infixs) (Op op) ->
-        match op.kind with
-        | Prefix {apply} ->
-            let pop = op.pop >>| fun x -> (prio, apply x) in
-            (prio - 1, pop :: prefixs, infixs)
-        | Infix {assoc; apply} ->
-            let pop = op.pop >>| fun x -> (assoc, prio, apply x) in
-            (prio - 1, prefixs, pop :: infixs) )
+let rec pinfixl pop prhs lhs =
+  let* apply = pop in
+  let* rhs = prhs in
+  let lhs' = apply lhs rhs in
+  pinfixl pop prhs lhs' <|> return lhs'
+
+let rec pinfixr pop prhs lhs =
+  let* apply = pop in
+  let* rhs = prhs >>= fun lhs' -> pinfixr pop prhs lhs' <|> return lhs' in
+  return (apply lhs rhs)
+
+let plvl poprnd ops =
+  let prefixs, infixns, infixls, infixrs =
+    List.fold_left ops ~init:([], [], [], [])
+      ~f:(fun (prefixs, infixns, infixls, infixrs) -> function
+      | Prefix p ->
+          (p :: prefixs, infixns, infixls, infixrs)
+      | InfixN p ->
+          (prefixs, p :: infixns, infixls, infixrs)
+      | InfixL p ->
+          (prefixs, infixns, p :: infixls, infixrs)
+      | InfixR p ->
+          (prefixs, infixns, infixls, p :: infixrs) )
   in
 
-  (* Pratt parser
-     https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html *)
-  let rec helper min_prio =
-    let pprefix =
-      let* prio, apply = ws *> choice prefixs in
-      let* rhs = helper prio in
-      return (apply rhs)
-    in
-    let* lhs = pprefix <|> poprnd in
+  let pprefix = pprefix (choice prefixs) poprnd in
+  let pinfixn = pinfixn (choice infixns) pprefix in
+  let pinfixl = pinfixl (choice infixls) pprefix in
+  let pinfixr = pinfixr (choice infixrs) pprefix in
 
-    let pinfix =
-      let* assoc, prio, apply = ws *> choice infixs in
-      let* () = if prio < min_prio then fail "" else unit in
+  let* lhs = pprefix in
+  choice [pinfixr lhs; pinfixl lhs; pinfixn lhs; return lhs]
 
-      (* if left assoc then break if next operator has the same priority *)
-      let prio = match assoc with `Left -> prio + 1 | `Right -> prio in
-      let* rhs = helper prio in
-
-      return (apply, rhs)
-    in
-    (* XXX: recursive parser with acc would be better here
-       than many + fold *)
-    many pinfix
-    >>| List.fold ~init:lhs ~f:(fun acc (apply, oprnd) -> apply acc oprnd)
-  in
-
-  helper min_prio
+let poperators ~table ~poprnd = List.fold_left table ~init:poprnd ~f:plvl
