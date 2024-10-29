@@ -21,10 +21,14 @@ let list1_exn = function
 let unit = return ()
 
 let skip_ws = skip_while Char.is_whitespace
-let skip_comment = string "(*" *> many_till any_char (string "*)") *> unit
+let skip_comments =
+  let scomment = string "(*" *> many_till any_char (string "*)") in
+  sep_by skip_ws scomment *> unit
 
-let ws = skip_ws *> sep_by skip_ws skip_comment *> skip_ws
-let ws1 = (skip Char.is_whitespace <|> skip_comment) *> ws
+let ws = skip_ws *> skip_comments *> skip_ws
+let ws1 =
+  let paren = peek_char_fail >>= function '(' -> unit | _ -> fail "" in
+  choice [skip Char.is_whitespace *> ws; paren *> skip_comments]
 
 let ident s = string s >>| fun x -> Id x
 
