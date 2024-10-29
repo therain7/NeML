@@ -86,7 +86,7 @@ and expression =
           - [C E]             when [exp] is [Some E]
           - [C (E1, ..., En)] when [exp] is [Some (ExpTuple[E1,...,En])]
         *)
-  | ExpIfThenElse of expression * expression * expression option
+  | ExpIf of expression * expression * expression option
       (** [if E1 then E2 else E3] *)
   | ExpSeq of expression list2  (** [E1; E2] *)
   | ExpConstraint of expression * ty  (** [(E : T)] *)

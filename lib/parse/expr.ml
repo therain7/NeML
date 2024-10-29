@@ -75,7 +75,7 @@ let pif pexpr =
     opt (ws1 *> string "else")
     >>= function Some _ -> ws1 *> pexpr >>| Option.some | None -> return None
   in
-  return (ExpIfThenElse (if', then', else'))
+  return (ExpIf (if', then', else'))
 
 let poprnd pexpr =
   ws
