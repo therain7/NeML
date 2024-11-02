@@ -33,7 +33,8 @@ val pprefix_id : ident t
 
 (* ===== Constants, value bindings ===== *)
 val pconst : constant t
-val plet : expression t -> pattern t -> (rec_flag * value_binding list1) t
+val plet :
+  expression t -> pattern t -> ty t -> (rec_flag * value_binding list1) t
 
 (* ======= Operators ======= *)
 type 'oprnd operator =

@@ -253,6 +253,62 @@ let%expect_test _ =
       ]
     |}]
 
+let%expect_test _ =
+  run {| let ( x : int ) = 1 |} ;
+  [%expect
+    {|
+    [(StrLet (Nonrecursive,
+        ({ pat = (PatConstraint ((PatVar (Id "x")), (TyCon ((Id "int"), []))));
+           expr = (ExpConst (ConstInt 1)) },
+         [])
+        ))
+      ]
+    |}]
+
+let%expect_test _ =
+  run {| let Some Some (x : int) = Some (Some 1) |} ;
+  [%expect
+    {|
+    [(StrLet (Nonrecursive,
+        ({ pat =
+           (PatConstruct ((Id "Some"),
+              (Some (PatConstruct ((Id "Some"),
+                       (Some (PatConstraint ((PatVar (Id "x")),
+                                (TyCon ((Id "int"), [])))))
+                       )))
+              ));
+           expr =
+           (ExpConstruct ((Id "Some"),
+              (Some (ExpConstruct ((Id "Some"), (Some (ExpConst (ConstInt 1))))))
+              ))
+           },
+         [])
+        ))
+      ]
+    |}]
+
+let%expect_test _ =
+  run {| let Some Some x : int option option = Some (Some 1) |} ;
+  [%expect
+    {|
+    [(StrLet (Nonrecursive,
+        ({ pat =
+           (PatConstraint (
+              (PatConstruct ((Id "Some"),
+                 (Some (PatConstruct ((Id "Some"), (Some (PatVar (Id "x")))))))),
+              (TyCon ((Id "option"),
+                 [(TyCon ((Id "option"), [(TyCon ((Id "int"), []))]))]))
+              ));
+           expr =
+           (ExpConstruct ((Id "Some"),
+              (Some (ExpConstruct ((Id "Some"), (Some (ExpConst (ConstInt 1))))))
+              ))
+           },
+         [])
+        ))
+      ]
+    |}]
+
 (* ======= Expressions ======= *)
 
 let%expect_test _ =
@@ -629,6 +685,39 @@ let%expect_test _ =
               ({ pat = (PatVar (Id "a")); expr = (ExpConst (ConstInt 1)) }, []),
               (ExpIdent (Id "a"))))
            )))
+      ]
+    |}]
+
+let%expect_test _ =
+  run {| ( a : int ) |} ;
+  [%expect
+    {| [(StrEval (ExpConstraint ((ExpIdent (Id "a")), (TyCon ((Id "int"), [])))))] |}]
+
+let%expect_test _ =
+  run {| (fun x -> x : int -> int) |} ;
+  [%expect
+    {|
+    [(StrEval
+        (ExpConstraint ((ExpFun (((PatVar (Id "x")), []), (ExpIdent (Id "x")))),
+           (TyArr ((TyCon ((Id "int"), [])), (TyCon ((Id "int"), [])))))))
+      ]
+    |}]
+
+let%expect_test _ =
+  run {| let f x y : int = 1 in f |} ;
+  [%expect
+    {|
+    [(StrEval
+        (ExpLet (Nonrecursive,
+           ({ pat = (PatVar (Id "f"));
+              expr =
+              (ExpFun (((PatVar (Id "x")), [(PatVar (Id "y"))]),
+                 (ExpConstraint ((ExpConst (ConstInt 1)),
+                    (TyCon ((Id "int"), []))))
+                 ))
+              },
+            []),
+           (ExpIdent (Id "f")))))
       ]
     |}]
 
