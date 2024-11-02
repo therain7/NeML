@@ -14,6 +14,10 @@ open LAst
 
 open Common
 
+(**
+  [let P1 = E1 and P2 = E2 and ...]
+  [let rec ValId1 PArg1 = E1 and P1 = E2 and ...]
+*)
 let plet =
   let* rec_flag, bindings = plet Expr.pexpr Pat.ppat in
   opt @@ spaced (string "in")
@@ -28,6 +32,7 @@ let pty_params_ =
   let psingle = pty_var_id >>| List.return in
   psingle <|> pmultiple <|> return []
 
+(** [Foo of string], [Bar of int] *)
 let pconstruct_decl_ =
   let* id = pconstruct_id in
   let* arg =
@@ -36,6 +41,7 @@ let pconstruct_decl_ =
   in
   return {id; arg}
 
+(** [type foo = Foo of string | Bar of int] *)
 let pty_decl =
   let* params = string "type" *> ws1 *> pty_params_ in
   let* id = ws *> pty_con_id in
