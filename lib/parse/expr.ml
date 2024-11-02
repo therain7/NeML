@@ -14,6 +14,7 @@ open LAst
 
 open Common
 open Pat
+open Ty
 
 let pident = pvalue_id >>| fun id -> ExpIdent id
 let pconst = pconst >>| fun const -> ExpConst const
@@ -24,7 +25,7 @@ let pconstruct = pconstruct_id >>| fun id -> ExpConstruct (id, None)
   [let rec ValId1 PArg1 = E1 and P1 = E2 and ... in E]
 *)
 let plet pexpr =
-  let* rec_flag, bindings = plet pexpr ppat in
+  let* rec_flag, bindings = plet pexpr ppat pty in
   let* expr = spaced (string "in") *> pexpr in
   return (ExpLet (rec_flag, bindings, expr))
 
@@ -77,6 +78,19 @@ let pif pexpr =
   in
   return (ExpIf (if', then', else'))
 
+(**
+  [ (expr) ]
+  [ (expr: ty) ]
+*)
+let pparens pexpr =
+  let p =
+    let* expr = pexpr in
+    opt (ws *> char ':')
+    >>= function
+    | None -> return expr | Some _ -> pty >>| fun ty -> ExpConstraint (expr, ty)
+  in
+  parens p
+
 let poprnd pexpr =
   ws
   *> choice
@@ -89,7 +103,7 @@ let poprnd pexpr =
        ; pfunction pexpr
        ; plist pexpr
        ; pif pexpr
-       ; parens pexpr ]
+       ; pparens pexpr ]
 
 (* ======= Operators ======= *)
 

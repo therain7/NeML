@@ -19,7 +19,7 @@ open Common
   [let rec ValId1 PArg1 = E1 and P1 = E2 and ...]
 *)
 let plet =
-  let* rec_flag, bindings = plet Expr.pexpr Pat.ppat in
+  let* rec_flag, bindings = plet Expr.pexpr Pat.ppat Ty.pty in
   opt @@ spaced (string "in")
   >>= function
   | None ->

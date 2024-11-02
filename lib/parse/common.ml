@@ -155,20 +155,37 @@ let pconst =
 (* ====== Value bindings ====== *)
 
 (**
-  [let [rec] P1 = E1 and P2 = E2 and ...]
-  [let [rec] ValId1 PArg1 = E1 and P1 = E2 and ...]
+  [let [rec] P1 [: Ty] = E1 and P2 = E2 and ...]
+  [let [rec] ValId1 PArg1 [: Ty] = E1 and P1 = E2 and ...]
 *)
-let plet pexpr ppat =
+let plet pexpr ppat pty =
   let pbinding =
     let pfun =
       let* id = pvalue_id in
       let* args = ws1 *> sep_by1 ws1 ppat >>| list1_exn in
+      let* ty =
+        opt (ws *> char ':')
+        >>= function None -> return None | Some _ -> pty >>| Option.some
+      in
       let* expr = ws *> char '=' *> pexpr in
+
+      let expr =
+        match ty with None -> expr | Some ty -> ExpConstraint (expr, ty)
+      in
       return {pat= PatVar id; expr= ExpFun (args, expr)}
     in
 
     let psimple =
-      let* pat = ppat in
+      let* pat =
+        ppat
+        >>= fun pat ->
+        opt (ws *> char ':')
+        >>= function
+        | None ->
+            return pat
+        | Some _ ->
+            pty >>| fun ty -> PatConstraint (pat, ty)
+      in
       let* expr = ws *> char '=' *> pexpr in
       return {pat; expr}
     in

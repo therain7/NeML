@@ -13,6 +13,7 @@ open Angstrom
 open LAst
 
 open Common
+open Ty
 
 let pany = char '_' *> return PatAny
 let pvar = pvalue_id >>| fun id -> PatVar id
@@ -35,10 +36,23 @@ let plist ppat =
   in
   char '[' *> pelements <* ws <* opt (char ';') <* ws <* char ']'
 
+(**
+  [ (pat) ]
+  [ (pat: ty) ]
+*)
+let pparens ppat =
+  let p =
+    let* pat = ppat in
+    opt (ws *> char ':')
+    >>= function
+    | None -> return pat | Some _ -> pty >>| fun ty -> PatConstraint (pat, ty)
+  in
+  parens p
+
 let poprnd ppat =
   fix (fun poprnd ->
       ws
-      *> choice [pany; pvar; pconst; pconstruct poprnd; plist ppat; parens ppat] )
+      *> choice [pany; pvar; pconst; pconstruct poprnd; plist ppat; pparens ppat] )
 
 (* ======= Operators ======= *)
 
