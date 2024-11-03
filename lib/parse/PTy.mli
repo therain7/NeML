@@ -10,4 +10,4 @@ open! Base
 open Angstrom
 open LAst
 
-val ppat : pattern t
+val p : Ty.t t

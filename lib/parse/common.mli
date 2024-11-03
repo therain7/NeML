@@ -8,38 +8,41 @@
 
 open! Base
 open Angstrom
+
+open LMisc
 open LAst
 
 (* ======= Utils ======= *)
-val list1_exn : 'a list -> 'a list1
-
 val unit : unit t
 val ws : unit t
 val ws1 : unit t
-val ident : string -> ident t
+val ident : string -> Id.t t
 
 val parens : 'a t -> 'a t
 val spaced : 'a t -> 'a t
 val opt : 'a t -> 'a option t
 
 (* ======= Identifiers ======= *)
-val pconstruct_id : ident t
-val pvalue_id : ident t
-val pty_var_id : ident t
-val pty_con_id : ident t
+val pconstruct_id : Id.t t
+val pvalue_id : Id.t t
+val pty_var_id : Id.t t
+val pty_con_id : Id.t t
 
-val pinfix_id : ?starts:string -> unit -> ident t
-val pprefix_id : ident t
+val pinfix_id : ?starts:string -> unit -> Id.t t
+val pprefix_id : Id.t t
 
 (* ===== Constants, value bindings ===== *)
-val pconst : constant t
+val pconst : Const.t t
 val plet :
-  expression t -> pattern t -> ty t -> (rec_flag * value_binding list1) t
+     Expr.t t
+  -> Pat.t t
+  -> Ty.t t
+  -> (Expr.rec_flag * Expr.value_binding List1.t) t
 
 (* ======= Operators ======= *)
 type 'oprnd operator =
   | Prefix of ('oprnd -> 'oprnd) t  (** Prefix operator *)
-  | InfixN of ('oprnd list2 -> 'oprnd) t
+  | InfixN of ('oprnd List2.t -> 'oprnd) t
       (** Non-associative infix operator. Parsed to a list of operands *)
   | InfixL of ('oprnd -> 'oprnd -> 'oprnd) t
       (** Left associative infix operator *)

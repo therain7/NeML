@@ -10,29 +10,29 @@
 
 open! Base
 open Angstrom
+
+open LMisc
 open LAst
-
 open Common
-open Ty
 
-let pany = char '_' *> return PatAny
-let pvar = pvalue_id >>| fun id -> PatVar id
-let pconst = pconst >>| fun const -> PatConst const
+let pany = char '_' *> return Pat.Any
+let pvar = pvalue_id >>| fun id -> Pat.Var id
+let pconst = pconst >>| fun const -> Pat.Const const
 
 (** [Cons (hd, tl)] *)
 let pconstruct poprnd =
   let* id = pconstruct_id in
   let* arg = opt poprnd in
-  return (PatConstruct (id, arg))
+  return (Pat.Construct (id, arg))
 
 (** [a; b; c] *)
 let plist ppat =
   let pelements =
     sep_by1 (ws *> char ';') ppat
     >>| List.fold_right
-          ~init:(PatConstruct (Id "[]", None))
+          ~init:(Pat.Construct (Id.I "[]", None))
           ~f:(fun pat acc ->
-            PatConstruct (Id "::", Some (PatTuple (pat, acc, []))) )
+            Pat.Construct (Id.I "::", Some (Pat.Tuple (pat, acc, []))) )
   in
   char '[' *> pelements <* ws <* opt (char ';') <* ws <* char ']'
 
@@ -45,7 +45,7 @@ let pparens ppat =
     let* pat = ppat in
     opt (ws *> char ':')
     >>= function
-    | None -> return pat | Some _ -> pty >>| fun ty -> PatConstraint (pat, ty)
+    | None -> return pat | Some _ -> PTy.p >>| fun ty -> Pat.Constraint (pat, ty)
   in
   parens p
 
@@ -59,11 +59,12 @@ let poprnd ppat =
 let table =
   let plist =
     ws *> string "::"
-    >>| fun _ lhs rhs -> PatConstruct (Id "::", Some (PatTuple (lhs, rhs, [])))
+    >>| fun _ lhs rhs ->
+    Pat.Construct (Id.I "::", Some (Pat.Tuple (lhs, rhs, [])))
   in
-  let ptuple = ws *> string "," >>| fun _ list2 -> PatTuple list2 in
-  let por = ws *> string "|" >>| fun _ lhs rhs -> PatOr (lhs, rhs) in
+  let ptuple = ws *> string "," >>| fun _ list2 -> Pat.Tuple list2 in
+  let por = ws *> string "|" >>| fun _ lhs rhs -> Pat.Or (lhs, rhs) in
 
   [[InfixR plist]; [InfixN ptuple]; [InfixL por]]
 
-let ppat = fix (fun ppat -> poperators ~table ~poprnd:(poprnd ppat))
+let p = fix (fun ppat -> poperators ~table ~poprnd:(poprnd ppat))

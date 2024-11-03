@@ -9,4 +9,4 @@
 open! Base
 open Angstrom
 
-let parse s = parse_string ~consume:All Str.pstr s |> Result.ok
+let parse s = parse_string ~consume:All PStr.p s |> Result.ok

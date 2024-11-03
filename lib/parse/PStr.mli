@@ -10,4 +10,4 @@ open! Base
 open Angstrom
 open LAst
 
-val pstr : structure t
+val p : structure t
