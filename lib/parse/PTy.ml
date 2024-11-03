@@ -10,23 +10,23 @@
 
 open! Base
 open Angstrom
-open LAst
 
+open LAst
 open Common
 
 (** 'a, 'b *)
-let pvar = pty_var_id >>| fun id -> TyVar id
+let pvar = pty_var_id >>| fun id -> Ty.Var id
 
 (** ('k, 'v) map *)
 let pmulti_args_app pty =
   let* args = parens @@ sep_by1 (ws *> char ',') pty in
   let* id = ws *> pty_con_id in
-  return (TyCon (id, args))
+  return (Ty.Con (id, args))
 
 let poprnd pty =
   ws
   *> choice
-       [ (pty_con_id >>| fun id -> TyCon (id, []))
+       [ (pty_con_id >>| fun id -> Ty.Con (id, []))
        ; pvar
        ; pmulti_args_app pty
        ; parens pty ]
@@ -38,14 +38,14 @@ let poprnd pty =
 let papp pty =
   let* arg = poprnd pty in
   let rec pcons acc =
-    option acc (ws1 *> pty_con_id >>= fun id -> pcons (TyCon (id, [acc])))
+    option acc (ws1 *> pty_con_id >>= fun id -> pcons (Ty.Con (id, [acc])))
   in
   pcons arg
 
 let table =
-  let ptuple = ws *> string "*" >>| fun _ list2 -> TyTuple list2 in
-  let parr = ws *> string "->" >>| fun _ lhs rhs -> TyArr (lhs, rhs) in
+  let ptuple = ws *> string "*" >>| fun _ list2 -> Ty.Tuple list2 in
+  let parr = ws *> string "->" >>| fun _ lhs rhs -> Ty.Arr (lhs, rhs) in
 
   [[InfixN ptuple]; [InfixR parr]]
 
-let pty = fix (fun pty -> poperators ~table ~poprnd:(papp pty))
+let p = fix (fun pty -> poperators ~table ~poprnd:(papp pty))

@@ -10,4 +10,4 @@ open! Base
 open Angstrom
 open LAst
 
-val pexpr : expression t
+val p : Expr.t t

@@ -10,4 +10,4 @@ open! Base
 open Angstrom
 open LAst
 
-val pty : ty t
+val p : Pat.t t

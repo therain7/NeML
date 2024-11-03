@@ -21,22 +21,17 @@ let%expect_test _ =
   run {| let rec fact n = if n <= 1 then 1 else n * fact (n - 1) |} ;
   [%expect
     {|
-    [(StrLet (Recursive,
-        ({ pat = (PatVar (Id "fact"));
+    [(Let (Rec,
+        ({ pat = (Var (I "fact"));
            expr =
-           (ExpFun (((PatVar (Id "n")), []),
-              (ExpIf (
-                 (ExpApply (
-                    (ExpApply ((ExpIdent (Id "<=")), (ExpIdent (Id "n")))),
-                    (ExpConst (ConstInt 1)))),
-                 (ExpConst (ConstInt 1)),
-                 (Some (ExpApply (
-                          (ExpApply ((ExpIdent (Id "*")), (ExpIdent (Id "n")))),
-                          (ExpApply ((ExpIdent (Id "fact")),
-                             (ExpApply (
-                                (ExpApply ((ExpIdent (Id "-")),
-                                   (ExpIdent (Id "n")))),
-                                (ExpConst (ConstInt 1))))
+           (Fun (((Var (I "n")), []),
+              (If (
+                 (Apply ((Apply ((Id (I "<=")), (Id (I "n")))), (Const (Int 1)))),
+                 (Const (Int 1)),
+                 (Some (Apply ((Apply ((Id (I "*")), (Id (I "n")))),
+                          (Apply ((Id (I "fact")),
+                             (Apply ((Apply ((Id (I "-")), (Id (I "n")))),
+                                (Const (Int 1))))
                              ))
                           )))
                  ))
@@ -53,11 +48,11 @@ let%expect_test _ =
   run {| let Cons (hd, tl) = () |} ;
   [%expect
     {|
-    [(StrLet (Nonrecursive,
+    [(Let (Nonrec,
         ({ pat =
-           (PatConstruct ((Id "Cons"),
-              (Some (PatTuple ((PatVar (Id "hd")), (PatVar (Id "tl")), [])))));
-           expr = (ExpConstruct ((Id "()"), None)) },
+           (Construct ((I "Cons"),
+              (Some (Tuple ((Var (I "hd")), (Var (I "tl")), [])))));
+           expr = (Construct ((I "()"), None)) },
          [])
         ))
       ]
@@ -67,11 +62,11 @@ let%expect_test _ =
   run {| let C _ | a, b = () |} ;
   [%expect
     {|
-    [(StrLet (Nonrecursive,
+    [(Let (Nonrec,
         ({ pat =
-           (PatOr ((PatConstruct ((Id "C"), (Some PatAny))),
-              (PatTuple ((PatVar (Id "a")), (PatVar (Id "b")), []))));
-           expr = (ExpConstruct ((Id "()"), None)) },
+           (Or ((Construct ((I "C"), (Some Any))),
+              (Tuple ((Var (I "a")), (Var (I "b")), []))));
+           expr = (Construct ((I "()"), None)) },
          [])
         ))
       ]
@@ -81,13 +76,11 @@ let%expect_test _ =
   run {| let a | (b | c) | d = () |} ;
   [%expect
     {|
-    [(StrLet (Nonrecursive,
+    [(Let (Nonrec,
         ({ pat =
-           (PatOr (
-              (PatOr ((PatVar (Id "a")),
-                 (PatOr ((PatVar (Id "b")), (PatVar (Id "c")))))),
-              (PatVar (Id "d"))));
-           expr = (ExpConstruct ((Id "()"), None)) },
+           (Or ((Or ((Var (I "a")), (Or ((Var (I "b")), (Var (I "c")))))),
+              (Var (I "d"))));
+           expr = (Construct ((I "()"), None)) },
          [])
         ))
       ]
@@ -97,13 +90,12 @@ let%expect_test _ =
   run {| let a, (b, c), d = () |} ;
   [%expect
     {|
-    [(StrLet (Nonrecursive,
+    [(Let (Nonrec,
         ({ pat =
-           (PatTuple
-              ((PatVar (Id "a")),
-               (PatTuple ((PatVar (Id "b")), (PatVar (Id "c")), [])),
-               [(PatVar (Id "d"))]));
-           expr = (ExpConstruct ((Id "()"), None)) },
+           (Tuple
+              ((Var (I "a")), (Tuple ((Var (I "b")), (Var (I "c")), [])),
+               [(Var (I "d"))]));
+           expr = (Construct ((I "()"), None)) },
          [])
         ))
       ]
@@ -113,11 +105,11 @@ let%expect_test _ =
   run {| let a, b | c, d = () |} ;
   [%expect
     {|
-    [(StrLet (Nonrecursive,
+    [(Let (Nonrec,
         ({ pat =
-           (PatOr ((PatTuple ((PatVar (Id "a")), (PatVar (Id "b")), [])),
-              (PatTuple ((PatVar (Id "c")), (PatVar (Id "d")), []))));
-           expr = (ExpConstruct ((Id "()"), None)) },
+           (Or ((Tuple ((Var (I "a")), (Var (I "b")), [])),
+              (Tuple ((Var (I "c")), (Var (I "d")), []))));
+           expr = (Construct ((I "()"), None)) },
          [])
         ))
       ]
@@ -127,23 +119,23 @@ let%expect_test _ =
   run {| let a::(b::c)::d = () |} ;
   [%expect
     {|
-    [(StrLet (Nonrecursive,
+    [(Let (Nonrec,
         ({ pat =
-           (PatConstruct ((Id "::"),
-              (Some (PatTuple
-                       ((PatVar (Id "a")),
-                        (PatConstruct ((Id "::"),
-                           (Some (PatTuple
-                                    ((PatConstruct ((Id "::"),
-                                        (Some (PatTuple
-                                                 ((PatVar (Id "b")),
-                                                  (PatVar (Id "c")), [])))
+           (Construct ((I "::"),
+              (Some (Tuple
+                       ((Var (I "a")),
+                        (Construct ((I "::"),
+                           (Some (Tuple
+                                    ((Construct ((I "::"),
+                                        (Some (Tuple
+                                                 ((Var (I "b")), (Var (I "c")),
+                                                  [])))
                                         )),
-                                     (PatVar (Id "d")), [])))
+                                     (Var (I "d")), [])))
                            )),
                         [])))
               ));
-           expr = (ExpConstruct ((Id "()"), None)) },
+           expr = (Construct ((I "()"), None)) },
          [])
         ))
       ]
@@ -153,23 +145,21 @@ let%expect_test _ =
   run {| let a::b::c,d|e = () |} ;
   [%expect
     {|
-    [(StrLet (Nonrecursive,
+    [(Let (Nonrec,
         ({ pat =
-           (PatOr (
-              (PatTuple
-                 ((PatConstruct ((Id "::"),
-                     (Some (PatTuple
-                              ((PatVar (Id "a")),
-                               (PatConstruct ((Id "::"),
-                                  (Some (PatTuple
-                                           ((PatVar (Id "b")), (PatVar (Id "c")),
-                                            [])))
+           (Or (
+              (Tuple
+                 ((Construct ((I "::"),
+                     (Some (Tuple
+                              ((Var (I "a")),
+                               (Construct ((I "::"),
+                                  (Some (Tuple ((Var (I "b")), (Var (I "c")), [])))
                                   )),
                                [])))
                      )),
-                  (PatVar (Id "d")), [])),
-              (PatVar (Id "e"))));
-           expr = (ExpConstruct ((Id "()"), None)) },
+                  (Var (I "d")), [])),
+              (Var (I "e"))));
+           expr = (Construct ((I "()"), None)) },
          [])
         ))
       ]
@@ -179,26 +169,25 @@ let%expect_test _ =
   run {| let [a;b;c] = () |} ;
   [%expect
     {|
-    [(StrLet (Nonrecursive,
+    [(Let (Nonrec,
         ({ pat =
-           (PatConstruct ((Id "::"),
-              (Some (PatTuple
-                       ((PatVar (Id "a")),
-                        (PatConstruct ((Id "::"),
-                           (Some (PatTuple
-                                    ((PatVar (Id "b")),
-                                     (PatConstruct ((Id "::"),
-                                        (Some (PatTuple
-                                                 ((PatVar (Id "c")),
-                                                  (PatConstruct ((Id "[]"), None
-                                                     )),
+           (Construct ((I "::"),
+              (Some (Tuple
+                       ((Var (I "a")),
+                        (Construct ((I "::"),
+                           (Some (Tuple
+                                    ((Var (I "b")),
+                                     (Construct ((I "::"),
+                                        (Some (Tuple
+                                                 ((Var (I "c")),
+                                                  (Construct ((I "[]"), None)),
                                                   [])))
                                         )),
                                      [])))
                            )),
                         [])))
               ));
-           expr = (ExpConstruct ((Id "()"), None)) },
+           expr = (Construct ((I "()"), None)) },
          [])
         ))
       ]
@@ -208,13 +197,11 @@ let%expect_test _ =
   run {| let [a] = () |} ;
   [%expect
     {|
-    [(StrLet (Nonrecursive,
+    [(Let (Nonrec,
         ({ pat =
-           (PatConstruct ((Id "::"),
-              (Some (PatTuple
-                       ((PatVar (Id "a")), (PatConstruct ((Id "[]"), None)), [])))
-              ));
-           expr = (ExpConstruct ((Id "()"), None)) },
+           (Construct ((I "::"),
+              (Some (Tuple ((Var (I "a")), (Construct ((I "[]"), None)), [])))));
+           expr = (Construct ((I "()"), None)) },
          [])
         ))
       ]
@@ -224,9 +211,9 @@ let%expect_test _ =
   run {| let [] = () |} ;
   [%expect
     {|
-    [(StrLet (Nonrecursive,
-        ({ pat = (PatConstruct ((Id "[]"), None));
-           expr = (ExpConstruct ((Id "()"), None)) },
+    [(Let (Nonrec,
+        ({ pat = (Construct ((I "[]"), None));
+           expr = (Construct ((I "()"), None)) },
          [])
         ))
       ]
@@ -236,18 +223,16 @@ let%expect_test _ =
   run {| let hd1::hd2::tl = () |} ;
   [%expect
     {|
-    [(StrLet (Nonrecursive,
+    [(Let (Nonrec,
         ({ pat =
-           (PatConstruct ((Id "::"),
-              (Some (PatTuple
-                       ((PatVar (Id "hd1")),
-                        (PatConstruct ((Id "::"),
-                           (Some (PatTuple
-                                    ((PatVar (Id "hd2")), (PatVar (Id "tl")), [])))
-                           )),
+           (Construct ((I "::"),
+              (Some (Tuple
+                       ((Var (I "hd1")),
+                        (Construct ((I "::"),
+                           (Some (Tuple ((Var (I "hd2")), (Var (I "tl")), []))))),
                         [])))
               ));
-           expr = (ExpConstruct ((Id "()"), None)) },
+           expr = (Construct ((I "()"), None)) },
          [])
         ))
       ]
@@ -257,9 +242,9 @@ let%expect_test _ =
   run {| let ( x : int ) = 1 |} ;
   [%expect
     {|
-    [(StrLet (Nonrecursive,
-        ({ pat = (PatConstraint ((PatVar (Id "x")), (TyCon ((Id "int"), []))));
-           expr = (ExpConst (ConstInt 1)) },
+    [(Let (Nonrec,
+        ({ pat = (Constraint ((Var (I "x")), (Con ((I "int"), []))));
+           expr = (Const (Int 1)) },
          [])
         ))
       ]
@@ -269,18 +254,16 @@ let%expect_test _ =
   run {| let Some Some (x : int) = Some (Some 1) |} ;
   [%expect
     {|
-    [(StrLet (Nonrecursive,
+    [(Let (Nonrec,
         ({ pat =
-           (PatConstruct ((Id "Some"),
-              (Some (PatConstruct ((Id "Some"),
-                       (Some (PatConstraint ((PatVar (Id "x")),
-                                (TyCon ((Id "int"), [])))))
+           (Construct ((I "Some"),
+              (Some (Construct ((I "Some"),
+                       (Some (Constraint ((Var (I "x")), (Con ((I "int"), [])))))
                        )))
               ));
            expr =
-           (ExpConstruct ((Id "Some"),
-              (Some (ExpConstruct ((Id "Some"), (Some (ExpConst (ConstInt 1))))))
-              ))
+           (Construct ((I "Some"),
+              (Some (Construct ((I "Some"), (Some (Const (Int 1))))))))
            },
          [])
         ))
@@ -291,18 +274,17 @@ let%expect_test _ =
   run {| let Some Some x : int option option = Some (Some 1) |} ;
   [%expect
     {|
-    [(StrLet (Nonrecursive,
+    [(Let (Nonrec,
         ({ pat =
-           (PatConstraint (
-              (PatConstruct ((Id "Some"),
-                 (Some (PatConstruct ((Id "Some"), (Some (PatVar (Id "x")))))))),
-              (TyCon ((Id "option"),
-                 [(TyCon ((Id "option"), [(TyCon ((Id "int"), []))]))]))
+           (Constraint (
+              (Construct ((I "Some"),
+                 (Some (Construct ((I "Some"), (Some (Var (I "x")))))))),
+              (Con ((I "option"), [(Con ((I "option"), [(Con ((I "int"), []))]))]
+                 ))
               ));
            expr =
-           (ExpConstruct ((Id "Some"),
-              (Some (ExpConstruct ((Id "Some"), (Some (ExpConst (ConstInt 1))))))
-              ))
+           (Construct ((I "Some"),
+              (Some (Construct ((I "Some"), (Some (Const (Int 1))))))))
            },
          [])
         ))
@@ -315,13 +297,10 @@ let%expect_test _ =
   run {| function | a -> true | b -> false |} ;
   [%expect
     {|
-    [(StrEval
-        (ExpFunction
-           ({ left = (PatVar (Id "a"));
-              right = (ExpConstruct ((Id "true"), None)) },
-            [{ left = (PatVar (Id "b"));
-               right = (ExpConstruct ((Id "false"), None)) }
-              ])))
+    [(Eval
+        (Function
+           ({ left = (Var (I "a")); right = (Construct ((I "true"), None)) },
+            [{ left = (Var (I "b")); right = (Construct ((I "false"), None)) }])))
       ]
     |}]
 
@@ -329,28 +308,24 @@ let%expect_test _ =
   run {| fun x y -> x + y |} ;
   [%expect
     {|
-    [(StrEval
-        (ExpFun (((PatVar (Id "x")), [(PatVar (Id "y"))]),
-           (ExpApply ((ExpApply ((ExpIdent (Id "+")), (ExpIdent (Id "x")))),
-              (ExpIdent (Id "y"))))
-           )))
+    [(Eval
+        (Fun (((Var (I "x")), [(Var (I "y"))]),
+           (Apply ((Apply ((Id (I "+")), (Id (I "x")))), (Id (I "y")))))))
       ]
     |}]
 
 let%expect_test _ =
-  run {| a0b'c_d |} ; [%expect {| [(StrEval (ExpIdent (Id "a0b'c_d")))] |}]
+  run {| a0b'c_d |} ; [%expect {| [(Eval (Id (I "a0b'c_d")))] |}]
 
 let%expect_test _ =
   run "a >>= b ++ c ** d !+ e" ;
   [%expect
     {|
-    [(StrEval
-        (ExpApply ((ExpApply ((ExpIdent (Id ">>=")), (ExpIdent (Id "a")))),
-           (ExpApply ((ExpApply ((ExpIdent (Id "++")), (ExpIdent (Id "b")))),
-              (ExpApply ((ExpApply ((ExpIdent (Id "**")), (ExpIdent (Id "c")))),
-                 (ExpApply ((ExpIdent (Id "d")),
-                    (ExpApply ((ExpIdent (Id "!+")), (ExpIdent (Id "e"))))))
-                 ))
+    [(Eval
+        (Apply ((Apply ((Id (I ">>=")), (Id (I "a")))),
+           (Apply ((Apply ((Id (I "++")), (Id (I "b")))),
+              (Apply ((Apply ((Id (I "**")), (Id (I "c")))),
+                 (Apply ((Id (I "d")), (Apply ((Id (I "!+")), (Id (I "e"))))))))
               ))
            )))
       ]
@@ -360,13 +335,12 @@ let%expect_test _ =
   run {| let rec a = 1 and b = 2 in let e = 3 in a |} ;
   [%expect
     {|
-    [(StrEval
-        (ExpLet (Recursive,
-           ({ pat = (PatVar (Id "a")); expr = (ExpConst (ConstInt 1)) },
-            [{ pat = (PatVar (Id "b")); expr = (ExpConst (ConstInt 2)) }]),
-           (ExpLet (Nonrecursive,
-              ({ pat = (PatVar (Id "e")); expr = (ExpConst (ConstInt 3)) }, []),
-              (ExpIdent (Id "a"))))
+    [(Eval
+        (Let (Rec,
+           ({ pat = (Var (I "a")); expr = (Const (Int 1)) },
+            [{ pat = (Var (I "b")); expr = (Const (Int 2)) }]),
+           (Let (Nonrec, ({ pat = (Var (I "e")); expr = (Const (Int 3)) }, []),
+              (Id (I "a"))))
            )))
       ]
     |}]
@@ -375,10 +349,9 @@ let%expect_test _ =
   run {| if a then (if b then c) else d |} ;
   [%expect
     {|
-    [(StrEval
-        (ExpIf ((ExpIdent (Id "a")),
-           (ExpIf ((ExpIdent (Id "b")), (ExpIdent (Id "c")), None)),
-           (Some (ExpIdent (Id "d"))))))
+    [(Eval
+        (If ((Id (I "a")), (If ((Id (I "b")), (Id (I "c")), None)),
+           (Some (Id (I "d"))))))
       ]
     |}]
 
@@ -386,9 +359,9 @@ let%expect_test _ =
   run {| if a; b then c; d |} ;
   [%expect
     {|
-    [(StrEval
-        (ExpIf ((ExpSeq ((ExpIdent (Id "a")), (ExpIdent (Id "b")), [])),
-           (ExpSeq ((ExpIdent (Id "c")), (ExpIdent (Id "d")), [])), None)))
+    [(Eval
+        (If ((Tuple ((Id (I "a")), (Id (I "b")), [])),
+           (Tuple ((Id (I "c")), (Id (I "d")), [])), None)))
       ]
     |}]
 
@@ -396,9 +369,9 @@ let%expect_test _ =
   run {| if a; b then (c; d) |} ;
   [%expect
     {|
-    [(StrEval
-        (ExpIf ((ExpSeq ((ExpIdent (Id "a")), (ExpIdent (Id "b")), [])),
-           (ExpSeq ((ExpIdent (Id "c")), (ExpIdent (Id "d")), [])), None)))
+    [(Eval
+        (If ((Tuple ((Id (I "a")), (Id (I "b")), [])),
+           (Tuple ((Id (I "c")), (Id (I "d")), [])), None)))
       ]
     |}]
 
@@ -406,10 +379,10 @@ let%expect_test _ =
   run {| match a with b -> c | d -> e |} ;
   [%expect
     {|
-    [(StrEval
-        (ExpMatch ((ExpIdent (Id "a")),
-           ({ left = (PatVar (Id "b")); right = (ExpIdent (Id "c")) },
-            [{ left = (PatVar (Id "d")); right = (ExpIdent (Id "e")) }])
+    [(Eval
+        (Match ((Id (I "a")),
+           ({ left = (Var (I "b")); right = (Id (I "c")) },
+            [{ left = (Var (I "d")); right = (Id (I "e")) }])
            )))
       ]
     |}]
@@ -418,35 +391,29 @@ let%expect_test _ =
   run {| match a with | b | c | d -> e | f -> g |} ;
   [%expect
     {|
-    [(StrEval
-        (ExpMatch ((ExpIdent (Id "a")),
-           ({ left =
-              (PatOr ((PatOr ((PatVar (Id "b")), (PatVar (Id "c")))),
-                 (PatVar (Id "d"))));
-              right = (ExpIdent (Id "e")) },
-            [{ left = (PatVar (Id "f")); right = (ExpIdent (Id "g")) }])
+    [(Eval
+        (Match ((Id (I "a")),
+           ({ left = (Or ((Or ((Var (I "b")), (Var (I "c")))), (Var (I "d"))));
+              right = (Id (I "e")) },
+            [{ left = (Var (I "f")); right = (Id (I "g")) }])
            )))
       ]
     |}]
 
 let%expect_test _ =
-  run {| Nil |} ; [%expect {| [(StrEval (ExpConstruct ((Id "Nil"), None)))] |}]
+  run {| Nil |} ; [%expect {| [(Eval (Construct ((I "Nil"), None)))] |}]
 
 let%expect_test _ =
   run {| Some x |} ;
-  [%expect
-    {| [(StrEval (ExpConstruct ((Id "Some"), (Some (ExpIdent (Id "x"))))))] |}]
+  [%expect {| [(Eval (Construct ((I "Some"), (Some (Id (I "x"))))))] |}]
 
 let%expect_test _ =
   run {| Cons (1, Nil) |} ;
   [%expect
     {|
-    [(StrEval
-        (ExpConstruct ((Id "Cons"),
-           (Some (ExpTuple
-                    ((ExpConst (ConstInt 1)), (ExpConstruct ((Id "Nil"), None)),
-                     [])))
-           )))
+    [(Eval
+        (Construct ((I "Cons"),
+           (Some (Tuple ((Const (Int 1)), (Construct ((I "Nil"), None)), []))))))
       ]
     |}]
 
@@ -454,22 +421,11 @@ let%expect_test _ =
   run {| [a;b;c] |} ;
   [%expect
     {|
-    [(StrEval
-        (ExpConstruct ((Id "::"),
-           (Some (ExpTuple
-                    ((ExpIdent (Id "a")),
-                     (ExpConstruct ((Id "::"),
-                        (Some (ExpTuple
-                                 ((ExpIdent (Id "b")),
-                                  (ExpConstruct ((Id "::"),
-                                     (Some (ExpTuple
-                                              ((ExpIdent (Id "c")),
-                                               (ExpConstruct ((Id "[]"), None)),
-                                               [])))
-                                     )),
-                                  [])))
-                        )),
-                     [])))
+    [(Eval
+        (Construct ((I "::"),
+           (Some (Tuple
+                    ((Tuple ((Id (I "a")), (Id (I "b")), [(Id (I "c"))])),
+                     (Construct ((I "[]"), None)), [])))
            )))
       ]
     |}]
@@ -478,18 +434,13 @@ let%expect_test _ =
   run {| [a;(b;c)] |} ;
   [%expect
     {|
-    [(StrEval
-        (ExpConstruct ((Id "::"),
-           (Some (ExpTuple
-                    ((ExpIdent (Id "a")),
-                     (ExpConstruct ((Id "::"),
-                        (Some (ExpTuple
-                                 ((ExpSeq
-                                     ((ExpIdent (Id "b")), (ExpIdent (Id "c")),
-                                      [])),
-                                  (ExpConstruct ((Id "[]"), None)), [])))
-                        )),
-                     [])))
+    [(Eval
+        (Construct ((I "::"),
+           (Some (Tuple
+                    ((Tuple
+                        ((Id (I "a")), (Tuple ((Id (I "b")), (Id (I "c")), [])),
+                         [])),
+                     (Construct ((I "[]"), None)), [])))
            )))
       ]
     |}]
@@ -498,35 +449,31 @@ let%expect_test _ =
   run {| [a] |} ;
   [%expect
     {|
-    [(StrEval
-        (ExpConstruct ((Id "::"),
-           (Some (ExpTuple
-                    ((ExpIdent (Id "a")), (ExpConstruct ((Id "[]"), None)), [])))
-           )))
+    [(Eval
+        (Construct ((I "::"),
+           (Some (Tuple ((Id (I "a")), (Construct ((I "[]"), None)), []))))))
       ]
     |}]
 
 let%expect_test _ =
-  run {| [] |} ; [%expect {| [(StrEval (ExpConstruct ((Id "[]"), None)))] |}]
+  run {| [] |} ; [%expect {| [(Eval (Construct ((I "[]"), None)))] |}]
 
 let%expect_test _ =
   run {| (a :: b) :: c :: d :: [] |} ;
   [%expect
     {|
-    [(StrEval
-        (ExpConstruct ((Id "::"),
-           (Some (ExpTuple
-                    ((ExpConstruct ((Id "::"),
-                        (Some (ExpTuple
-                                 ((ExpIdent (Id "a")), (ExpIdent (Id "b")), [])))
-                        )),
-                     (ExpConstruct ((Id "::"),
-                        (Some (ExpTuple
-                                 ((ExpIdent (Id "c")),
-                                  (ExpConstruct ((Id "::"),
-                                     (Some (ExpTuple
-                                              ((ExpIdent (Id "d")),
-                                               (ExpConstruct ((Id "[]"), None)),
+    [(Eval
+        (Construct ((I "::"),
+           (Some (Tuple
+                    ((Construct ((I "::"),
+                        (Some (Tuple ((Id (I "a")), (Id (I "b")), []))))),
+                     (Construct ((I "::"),
+                        (Some (Tuple
+                                 ((Id (I "c")),
+                                  (Construct ((I "::"),
+                                     (Some (Tuple
+                                              ((Id (I "d")),
+                                               (Construct ((I "[]"), None)),
                                                [])))
                                      )),
                                   [])))
@@ -540,10 +487,10 @@ let%expect_test _ =
   run {| (a ; b) ; c ; d ; e |} ;
   [%expect
     {|
-    [(StrEval
-        (ExpSeq
-           ((ExpSeq ((ExpIdent (Id "a")), (ExpIdent (Id "b")), [])),
-            (ExpIdent (Id "c")), [(ExpIdent (Id "d")); (ExpIdent (Id "e"))])))
+    [(Eval
+        (Tuple
+           ((Tuple ((Id (I "a")), (Id (I "b")), [])), (Id (I "c")),
+            [(Id (I "d")); (Id (I "e"))])))
       ]
     |}]
 
@@ -551,46 +498,31 @@ let%expect_test _ =
   run {| a, (b, c), d, e |} ;
   [%expect
     {|
-    [(StrEval
-        (ExpTuple
-           ((ExpIdent (Id "a")),
-            (ExpTuple ((ExpIdent (Id "b")), (ExpIdent (Id "c")), [])),
-            [(ExpIdent (Id "d")); (ExpIdent (Id "e"))])))
+    [(Eval
+        (Tuple
+           ((Id (I "a")), (Tuple ((Id (I "b")), (Id (I "c")), [])),
+            [(Id (I "d")); (Id (I "e"))])))
       ]
     |}]
 
 let%expect_test _ =
   run {| a, (b, c) |} ;
   [%expect
-    {|
-    [(StrEval
-        (ExpTuple
-           ((ExpIdent (Id "a")),
-            (ExpTuple ((ExpIdent (Id "b")), (ExpIdent (Id "c")), [])), [])))
-      ]
-    |}]
+    {| [(Eval (Tuple ((Id (I "a")), (Tuple ((Id (I "b")), (Id (I "c")), [])), [])))] |}]
 
 let%expect_test _ =
   run {| (a, b), c |} ;
   [%expect
-    {|
-    [(StrEval
-        (ExpTuple
-           ((ExpTuple ((ExpIdent (Id "a")), (ExpIdent (Id "b")), [])),
-            (ExpIdent (Id "c")), [])))
-      ]
-    |}]
+    {| [(Eval (Tuple ((Tuple ((Id (I "a")), (Id (I "b")), [])), (Id (I "c")), [])))] |}]
 
 let%expect_test _ =
   run {| 1 + - + + 3 |} ;
   [%expect
     {|
-    [(StrEval
-        (ExpApply ((ExpApply ((ExpIdent (Id "+")), (ExpConst (ConstInt 1)))),
-           (ExpApply ((ExpIdent (Id "~-")),
-              (ExpApply ((ExpIdent (Id "~+")),
-                 (ExpApply ((ExpIdent (Id "~+")), (ExpConst (ConstInt 3))))))
-              ))
+    [(Eval
+        (Apply ((Apply ((Id (I "+")), (Const (Int 1)))),
+           (Apply ((Id (I "~-")),
+              (Apply ((Id (I "~+")), (Apply ((Id (I "~+")), (Const (Int 3))))))))
            )))
       ]
     |}]
@@ -599,10 +531,10 @@ let%expect_test _ =
   run {| !%< 123; !0 |} ;
   [%expect
     {|
-    [(StrEval
-        (ExpSeq
-           ((ExpApply ((ExpIdent (Id "!%<")), (ExpConst (ConstInt 123)))),
-            (ExpApply ((ExpIdent (Id "!")), (ExpConst (ConstInt 0)))), [])))
+    [(Eval
+        (Tuple
+           ((Apply ((Id (I "!%<")), (Const (Int 123)))),
+            (Apply ((Id (I "!")), (Const (Int 0)))), [])))
       ]
     |}]
 
@@ -610,11 +542,9 @@ let%expect_test _ =
   run {| --+1 |} ;
   [%expect
     {|
-    [(StrEval
-        (ExpApply ((ExpIdent (Id "~-")),
-           (ExpApply ((ExpIdent (Id "~-")),
-              (ExpApply ((ExpIdent (Id "~+")), (ExpConst (ConstInt 1))))))
-           )))
+    [(Eval
+        (Apply ((Id (I "~-")),
+           (Apply ((Id (I "~-")), (Apply ((Id (I "~+")), (Const (Int 1)))))))))
       ]
     |}]
 
@@ -622,15 +552,14 @@ let%expect_test _ =
   run {| f(1+2+3) |} ;
   [%expect
     {|
-    [(StrEval
-        (ExpApply ((ExpIdent (Id "f")),
-           (ExpApply (
-              (ExpApply ((ExpIdent (Id "+")),
-                 (ExpApply (
-                    (ExpApply ((ExpIdent (Id "+")), (ExpConst (ConstInt 1)))),
-                    (ExpConst (ConstInt 2))))
+    [(Eval
+        (Apply ((Id (I "f")),
+           (Apply (
+              (Apply ((Id (I "+")),
+                 (Apply ((Apply ((Id (I "+")), (Const (Int 1)))), (Const (Int 2))
+                    ))
                  )),
-              (ExpConst (ConstInt 3))))
+              (Const (Int 3))))
            )))
       ]
     |}]
@@ -639,13 +568,10 @@ let%expect_test _ =
   run {| if(a && b) then(1+2) else(3) |} ;
   [%expect
     {|
-    [(StrEval
-        (ExpIf (
-           (ExpApply ((ExpApply ((ExpIdent (Id "&&")), (ExpIdent (Id "a")))),
-              (ExpIdent (Id "b")))),
-           (ExpApply ((ExpApply ((ExpIdent (Id "+")), (ExpConst (ConstInt 1)))),
-              (ExpConst (ConstInt 2)))),
-           (Some (ExpConst (ConstInt 3))))))
+    [(Eval
+        (If ((Apply ((Apply ((Id (I "&&")), (Id (I "a")))), (Id (I "b")))),
+           (Apply ((Apply ((Id (I "+")), (Const (Int 1)))), (Const (Int 2)))),
+           (Some (Const (Int 3))))))
       ]
     |}]
 
@@ -653,11 +579,10 @@ let%expect_test _ =
   run {| id let a = 1 in a |} ;
   [%expect
     {|
-    [(StrEval
-        (ExpApply ((ExpIdent (Id "id")),
-           (ExpLet (Nonrecursive,
-              ({ pat = (PatVar (Id "a")); expr = (ExpConst (ConstInt 1)) }, []),
-              (ExpIdent (Id "a"))))
+    [(Eval
+        (Apply ((Id (I "id")),
+           (Let (Nonrec, ({ pat = (Var (I "a")); expr = (Const (Int 1)) }, []),
+              (Id (I "a"))))
            )))
       ]
     |}]
@@ -666,11 +591,10 @@ let%expect_test _ =
   run {| ! let a = 1 in a |} ;
   [%expect
     {|
-    [(StrEval
-        (ExpApply ((ExpIdent (Id "!")),
-           (ExpLet (Nonrecursive,
-              ({ pat = (PatVar (Id "a")); expr = (ExpConst (ConstInt 1)) }, []),
-              (ExpIdent (Id "a"))))
+    [(Eval
+        (Apply ((Id (I "!")),
+           (Let (Nonrec, ({ pat = (Var (I "a")); expr = (Const (Int 1)) }, []),
+              (Id (I "a"))))
            )))
       ]
     |}]
@@ -679,27 +603,25 @@ let%expect_test _ =
   run {| 1 + let a = 1 in a |} ;
   [%expect
     {|
-    [(StrEval
-        (ExpApply ((ExpApply ((ExpIdent (Id "+")), (ExpConst (ConstInt 1)))),
-           (ExpLet (Nonrecursive,
-              ({ pat = (PatVar (Id "a")); expr = (ExpConst (ConstInt 1)) }, []),
-              (ExpIdent (Id "a"))))
+    [(Eval
+        (Apply ((Apply ((Id (I "+")), (Const (Int 1)))),
+           (Let (Nonrec, ({ pat = (Var (I "a")); expr = (Const (Int 1)) }, []),
+              (Id (I "a"))))
            )))
       ]
     |}]
 
 let%expect_test _ =
   run {| ( a : int ) |} ;
-  [%expect
-    {| [(StrEval (ExpConstraint ((ExpIdent (Id "a")), (TyCon ((Id "int"), [])))))] |}]
+  [%expect {| [(Eval (Constraint ((Id (I "a")), (Con ((I "int"), [])))))] |}]
 
 let%expect_test _ =
   run {| (fun x -> x : int -> int) |} ;
   [%expect
     {|
-    [(StrEval
-        (ExpConstraint ((ExpFun (((PatVar (Id "x")), []), (ExpIdent (Id "x")))),
-           (TyArr ((TyCon ((Id "int"), [])), (TyCon ((Id "int"), [])))))))
+    [(Eval
+        (Constraint ((Fun (((Var (I "x")), []), (Id (I "x")))),
+           (Arr ((Con ((I "int"), [])), (Con ((I "int"), [])))))))
       ]
     |}]
 
@@ -707,17 +629,15 @@ let%expect_test _ =
   run {| let f x y : int = 1 in f |} ;
   [%expect
     {|
-    [(StrEval
-        (ExpLet (Nonrecursive,
-           ({ pat = (PatVar (Id "f"));
+    [(Eval
+        (Let (Nonrec,
+           ({ pat = (Var (I "f"));
               expr =
-              (ExpFun (((PatVar (Id "x")), [(PatVar (Id "y"))]),
-                 (ExpConstraint ((ExpConst (ConstInt 1)),
-                    (TyCon ((Id "int"), []))))
-                 ))
+              (Fun (((Var (I "x")), [(Var (I "y"))]),
+                 (Constraint ((Const (Int 1)), (Con ((I "int"), []))))))
               },
             []),
-           (ExpIdent (Id "f")))))
+           (Id (I "f")))))
       ]
     |}]
 
@@ -727,9 +647,9 @@ let%expect_test _ =
   run {| type foo = A of int |} ;
   [%expect
     {|
-    [(StrType
-        { id = (Id "foo"); params = [];
-          variants = [{ id = (Id "A"); arg = (Some (TyCon ((Id "int"), []))) }] })
+    [(Type
+        { id = (I "foo"); params = [];
+          variants = [{ id = (I "A"); arg = (Some (Con ((I "int"), []))) }] })
       ]
     |}]
 
@@ -737,11 +657,11 @@ let%expect_test _ =
   run {| type foo = A of int list |} ;
   [%expect
     {|
-    [(StrType
-        { id = (Id "foo"); params = [];
+    [(Type
+        { id = (I "foo"); params = [];
           variants =
-          [{ id = (Id "A");
-             arg = (Some (TyCon ((Id "list"), [(TyCon ((Id "int"), []))]))) }
+          [{ id = (I "A");
+             arg = (Some (Con ((I "list"), [(Con ((I "int"), []))]))) }
             ]
           })
       ]
@@ -751,13 +671,13 @@ let%expect_test _ =
   run {| type foo = A of (int, string) map |} ;
   [%expect
     {|
-    [(StrType
-        { id = (Id "foo"); params = [];
+    [(Type
+        { id = (I "foo"); params = [];
           variants =
-          [{ id = (Id "A");
+          [{ id = (I "A");
              arg =
-             (Some (TyCon ((Id "map"),
-                      [(TyCon ((Id "int"), [])); (TyCon ((Id "string"), []))])))
+             (Some (Con ((I "map"),
+                      [(Con ((I "int"), [])); (Con ((I "string"), []))])))
              }
             ]
           })
@@ -768,14 +688,12 @@ let%expect_test _ =
   run {| type foo = A of 'a -> 'b -> 'c |} ;
   [%expect
     {|
-    [(StrType
-        { id = (Id "foo"); params = [];
+    [(Type
+        { id = (I "foo"); params = [];
           variants =
-          [{ id = (Id "A");
+          [{ id = (I "A");
              arg =
-             (Some (TyArr ((TyVar (Id "a")),
-                      (TyArr ((TyVar (Id "b")), (TyVar (Id "c")))))))
-             }
+             (Some (Arr ((Var (I "a")), (Arr ((Var (I "b")), (Var (I "c"))))))) }
             ]
           })
       ]
@@ -785,13 +703,11 @@ let%expect_test _ =
   run {| type foo = A of 'a * 'b * 'c |} ;
   [%expect
     {|
-    [(StrType
-        { id = (Id "foo"); params = [];
+    [(Type
+        { id = (I "foo"); params = [];
           variants =
-          [{ id = (Id "A");
-             arg =
-             (Some (TyTuple
-                      ((TyVar (Id "a")), (TyVar (Id "b")), [(TyVar (Id "c"))])))
+          [{ id = (I "A");
+             arg = (Some (Tuple ((Var (I "a")), (Var (I "b")), [(Var (I "c"))])))
              }
             ]
           })
@@ -802,10 +718,9 @@ let%expect_test _ =
   run {| type foo = A of 'some_type_var |} ;
   [%expect
     {|
-    [(StrType
-        { id = (Id "foo"); params = [];
-          variants =
-          [{ id = (Id "A"); arg = (Some (TyVar (Id "some_type_var"))) }] })
+    [(Type
+        { id = (I "foo"); params = [];
+          variants = [{ id = (I "A"); arg = (Some (Var (I "some_type_var"))) }] })
       ]
     |}]
 
@@ -815,23 +730,21 @@ let%expect_test _ =
          ('a -> int * (string, unit, 'b -> 'c) foo bar option) -> e |} ;
   [%expect
     {|
-    [(StrType
-        { id = (Id "foo"); params = [];
+    [(Type
+        { id = (I "foo"); params = [];
           variants =
-          [{ id = (Id "A");
+          [{ id = (I "A");
              arg =
-             (Some (TyArr (
-                      (TyArr ((TyVar (Id "a")),
-                         (TyTuple
-                            ((TyCon ((Id "int"), [])),
-                             (TyCon ((Id "option"),
-                                [(TyCon ((Id "bar"),
-                                    [(TyCon ((Id "foo"),
-                                        [(TyCon ((Id "string"), []));
-                                          (TyCon ((Id "unit"), []));
-                                          (TyArr ((TyVar (Id "b")),
-                                             (TyVar (Id "c"))))
-                                          ]
+             (Some (Arr (
+                      (Arr ((Var (I "a")),
+                         (Tuple
+                            ((Con ((I "int"), [])),
+                             (Con ((I "option"),
+                                [(Con ((I "bar"),
+                                    [(Con ((I "foo"),
+                                        [(Con ((I "string"), []));
+                                          (Con ((I "unit"), []));
+                                          (Arr ((Var (I "b")), (Var (I "c"))))]
                                         ))
                                       ]
                                     ))
@@ -839,7 +752,7 @@ let%expect_test _ =
                                 )),
                              []))
                          )),
-                      (TyCon ((Id "e"), [])))))
+                      (Con ((I "e"), [])))))
              }
             ]
           })
@@ -852,14 +765,12 @@ let%expect_test _ =
   run {| let (f, s) = (f + s, f - s) |} ;
   [%expect
     {|
-    [(StrLet (Nonrecursive,
-        ({ pat = (PatTuple ((PatVar (Id "f")), (PatVar (Id "s")), []));
+    [(Let (Nonrec,
+        ({ pat = (Tuple ((Var (I "f")), (Var (I "s")), []));
            expr =
-           (ExpTuple
-              ((ExpApply ((ExpApply ((ExpIdent (Id "+")), (ExpIdent (Id "f")))),
-                  (ExpIdent (Id "s")))),
-               (ExpApply ((ExpApply ((ExpIdent (Id "-")), (ExpIdent (Id "f")))),
-                  (ExpIdent (Id "s")))),
+           (Tuple
+              ((Apply ((Apply ((Id (I "+")), (Id (I "f")))), (Id (I "s")))),
+               (Apply ((Apply ((Id (I "-")), (Id (I "f")))), (Id (I "s")))),
                []))
            },
          [])
@@ -871,13 +782,11 @@ let%expect_test _ =
   run {| let (>>=) a b = a ** b |} ;
   [%expect
     {|
-    [(StrLet (Nonrecursive,
-        ({ pat = (PatVar (Id ">>="));
+    [(Let (Nonrec,
+        ({ pat = (Var (I ">>="));
            expr =
-           (ExpFun (((PatVar (Id "a")), [(PatVar (Id "b"))]),
-              (ExpApply ((ExpApply ((ExpIdent (Id "**")), (ExpIdent (Id "a")))),
-                 (ExpIdent (Id "b"))))
-              ))
+           (Fun (((Var (I "a")), [(Var (I "b"))]),
+              (Apply ((Apply ((Id (I "**")), (Id (I "a")))), (Id (I "b"))))))
            },
          [])
         ))
@@ -888,13 +797,11 @@ let%expect_test _ =
   run {| let (++) a b = a + b |} ;
   [%expect
     {|
-    [(StrLet (Nonrecursive,
-        ({ pat = (PatVar (Id "++"));
+    [(Let (Nonrec,
+        ({ pat = (Var (I "++"));
            expr =
-           (ExpFun (((PatVar (Id "a")), [(PatVar (Id "b"))]),
-              (ExpApply ((ExpApply ((ExpIdent (Id "+")), (ExpIdent (Id "a")))),
-                 (ExpIdent (Id "b"))))
-              ))
+           (Fun (((Var (I "a")), [(Var (I "b"))]),
+              (Apply ((Apply ((Id (I "+")), (Id (I "a")))), (Id (I "b"))))))
            },
          [])
         ))
@@ -907,13 +814,11 @@ let%expect_test _ =
          comment*) n + 1 |} ;
   [%expect
     {|
-    [(StrLet (Recursive,
-        ({ pat = (PatVar (Id "f"));
+    [(Let (Rec,
+        ({ pat = (Var (I "f"));
            expr =
-           (ExpFun (((PatVar (Id "n")), []),
-              (ExpApply ((ExpApply ((ExpIdent (Id "+")), (ExpIdent (Id "n")))),
-                 (ExpConst (ConstInt 1))))
-              ))
+           (Fun (((Var (I "n")), []),
+              (Apply ((Apply ((Id (I "+")), (Id (I "n")))), (Const (Int 1))))))
            },
          [])
         ))
@@ -924,41 +829,31 @@ let%expect_test _ =
   run {| letrec f n = n + 1 |} ;
   [%expect
     {|
-    [(StrEval
-        (ExpApply (
-           (ExpApply ((ExpIdent (Id "=")),
-              (ExpApply (
-                 (ExpApply ((ExpIdent (Id "letrec")), (ExpIdent (Id "f")))),
-                 (ExpIdent (Id "n"))))
-              )),
-           (ExpApply ((ExpApply ((ExpIdent (Id "+")), (ExpIdent (Id "n")))),
-              (ExpConst (ConstInt 1))))
-           )))
+    [(Eval
+        (Apply (
+           (Apply ((Id (I "=")),
+              (Apply ((Apply ((Id (I "letrec")), (Id (I "f")))), (Id (I "n")))))),
+           (Apply ((Apply ((Id (I "+")), (Id (I "n")))), (Const (Int 1)))))))
       ]
     |}]
 
 let%expect_test _ =
   run {| let reca = 1 |} ;
   [%expect
-    {|
-    [(StrLet (Nonrecursive,
-        ({ pat = (PatVar (Id "reca")); expr = (ExpConst (ConstInt 1)) }, [])))
-      ]
-    |}]
+    {| [(Let (Nonrec, ({ pat = (Var (I "reca")); expr = (Const (Int 1)) }, [])))] |}]
 
 let%expect_test _ =
   run {| type 'a list = Nil | Cons of 'a * 'a list |} ;
   [%expect
     {|
-    [(StrType
-        { id = (Id "list"); params = [(Id "a")];
+    [(Type
+        { id = (I "list"); params = [(I "a")];
           variants =
-          [{ id = (Id "Nil"); arg = None };
-            { id = (Id "Cons");
+          [{ id = (I "Nil"); arg = None };
+            { id = (I "Cons");
               arg =
-              (Some (TyTuple
-                       ((TyVar (Id "a")),
-                        (TyCon ((Id "list"), [(TyVar (Id "a"))])), [])))
+              (Some (Tuple
+                       ((Var (I "a")), (Con ((I "list"), [(Var (I "a"))])), [])))
               }
             ]
           })
@@ -969,5 +864,4 @@ let%expect_test _ = run {| 1a |} ; [%expect {| syntax error |}]
 
 let%expect_test _ =
   run {| 1 ;; a |} ;
-  [%expect
-    {| [(StrEval (ExpConst (ConstInt 1))); (StrEval (ExpIdent (Id "a")))] |}]
+  [%expect {| [(Eval (Const (Int 1))); (Eval (Id (I "a")))] |}]

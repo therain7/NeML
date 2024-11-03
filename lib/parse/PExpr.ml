@@ -10,57 +10,56 @@
 
 open! Base
 open Angstrom
+
+open LMisc
 open LAst
-
 open Common
-open Pat
-open Ty
 
-let pident = pvalue_id >>| fun id -> ExpIdent id
-let pconst = pconst >>| fun const -> ExpConst const
-let pconstruct = pconstruct_id >>| fun id -> ExpConstruct (id, None)
+let pident = pvalue_id >>| fun id -> Expr.Id id
+let pconst = pconst >>| fun const -> Expr.Const const
+let pconstruct = pconstruct_id >>| fun id -> Expr.Construct (id, None)
 
 (**
   [let P1 = E1 and P2 = E2 and ... in E]
   [let rec ValId1 PArg1 = E1 and P1 = E2 and ... in E]
 *)
 let plet pexpr =
-  let* rec_flag, bindings = plet pexpr ppat pty in
+  let* rec_flag, bindings = plet pexpr PPat.p PTy.p in
   let* expr = spaced (string "in") *> pexpr in
-  return (ExpLet (rec_flag, bindings, expr))
+  return (Expr.Let (rec_flag, bindings, expr))
 
 (** [fun P1 ... Pn -> E] *)
 let pfun pexpr =
-  let* args = string "fun" *> ws1 *> sep_by1 ws1 ppat >>| list1_exn in
+  let* args = string "fun" *> ws1 *> sep_by1 ws1 PPat.p >>| List1.of_list_exn in
   let* expr = ws *> string "->" *> pexpr in
-  return (ExpFun (args, expr))
+  return (Expr.Fun (args, expr))
 
 let pcases_ pexpr =
   let pcase =
-    let* left = ppat in
+    let* left = PPat.p in
     let* right = ws *> string "->" *> pexpr in
-    return {left; right}
+    return Expr.{left; right}
   in
   let pipe (* optional | *) = ws <* char '|' <|> ws1 in
-  pipe *> sep_by1 (ws *> char '|') pcase >>| list1_exn
+  pipe *> sep_by1 (ws *> char '|') pcase >>| List1.of_list_exn
 
 (** [match E0 with P1 -> E1 | ... | Pn -> En] *)
 let pmatch pexpr =
   let* expr = string "match" *> ws1 *> pexpr in
   let* cases = ws1 *> string "with" *> pcases_ pexpr in
-  return (ExpMatch (expr, cases))
+  return (Expr.Match (expr, cases))
 
 (** [function P1 -> E1 | ... | Pn -> En] *)
 let pfunction pexpr =
-  string "function" *> pcases_ pexpr >>| fun cases -> ExpFunction cases
+  string "function" *> pcases_ pexpr >>| fun cases -> Expr.Function cases
 
 (** [a; b; c] *)
 let plist pexpr =
-  let nil = ExpConstruct (Id "[]", None) in
-  let list hd tl = ExpConstruct (Id "::", Some (ExpTuple (hd, tl, []))) in
+  let nil = Expr.Construct (Id.I "[]", None) in
+  let list hd tl = Expr.Construct (Id.I "::", Some (Expr.Tuple (hd, tl, []))) in
 
   let to_construct = function
-    | ExpSeq (e1, e2, tl) ->
+    | Expr.Seq (e1, e2, tl) ->
         let tl = List.fold_right tl ~init:nil ~f:list in
         list e1 (list e2 tl)
     | e ->
@@ -76,7 +75,7 @@ let pif pexpr =
     opt (ws1 *> string "else")
     >>= function Some _ -> ws1 *> pexpr >>| Option.some | None -> return None
   in
-  return (ExpIf (if', then', else'))
+  return (Expr.If (if', then', else'))
 
 (**
   [ (expr) ]
@@ -87,7 +86,10 @@ let pparens pexpr =
     let* expr = pexpr in
     opt (ws *> char ':')
     >>= function
-    | None -> return expr | Some _ -> pty >>| fun ty -> ExpConstraint (expr, ty)
+    | None ->
+        return expr
+    | Some _ ->
+        PTy.p >>| fun ty -> Expr.Constraint (expr, ty)
   in
   parens p
 
@@ -109,27 +111,29 @@ let poprnd pexpr =
 
 let table =
   let pprefix1 =
-    ws *> pprefix_id >>| fun id rhs -> ExpApply (ExpIdent id, rhs)
+    ws *> pprefix_id >>| fun id rhs -> Expr.Apply (Expr.Id id, rhs)
   in
 
   let papply =
     ws1
     >>| fun _ lhs rhs ->
     match lhs with
-    | ExpConstruct (id, None) ->
+    | Expr.Construct (id, None) ->
         (* constructor application *)
-        ExpConstruct (id, Some rhs)
+        Expr.Construct (id, Some rhs)
     | _ ->
         (* function application *)
-        ExpApply (lhs, rhs)
+        Expr.Apply (lhs, rhs)
   in
 
   let pprefix2 =
-    ws *> choice [string "-" *> return (Id "~-"); string "+" *> return (Id "~+")]
-    >>| fun id rhs -> ExpApply (ExpIdent id, rhs)
+    ws
+    *> choice
+         [string "-" *> return (Id.I "~-"); string "+" *> return (Id.I "~+")]
+    >>| fun id rhs -> Expr.Apply (Expr.Id id, rhs)
   in
 
-  let ainfix id lhs rhs = ExpApply (ExpApply (ExpIdent id, lhs), rhs) in
+  let ainfix id lhs rhs = Expr.Apply (Expr.Apply (Expr.Id id, lhs), rhs) in
 
   let pinfix1 = ws *> pinfix_id ~starts:"**" () >>| ainfix in
 
@@ -148,7 +152,8 @@ let table =
 
   let plist =
     ws *> string "::"
-    >>| fun _ lhs rhs -> ExpConstruct (Id "::", Some (ExpTuple (lhs, rhs, [])))
+    >>| fun _ lhs rhs ->
+    Expr.Construct (Id.I "::", Some (Expr.Tuple (lhs, rhs, [])))
   in
 
   let pinfix4 =
@@ -171,8 +176,8 @@ let table =
   let pinfix6 = ws *> ident "&&" >>| ainfix in
   let pinfix7 = ws *> ident "||" >>| ainfix in
 
-  let ptuple = ws *> string "," >>| fun _ list2 -> ExpTuple list2 in
-  let pseq = ws *> string ";" >>| fun _ list2 -> ExpSeq list2 in
+  let ptuple = ws *> string "," >>| fun _ list2 -> Expr.Tuple list2 in
+  let pseq = ws *> string ";" >>| fun _ list2 -> Expr.Tuple list2 in
 
   [ [Prefix pprefix1]
   ; [InfixL papply]
@@ -188,4 +193,4 @@ let table =
   ; [InfixN ptuple]
   ; [InfixN pseq] ]
 
-let pexpr = fix (fun pexpr -> poperators ~table ~poprnd:(poprnd pexpr))
+let p = fix (fun pexpr -> poperators ~table ~poprnd:(poprnd pexpr))

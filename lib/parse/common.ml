@@ -8,16 +8,11 @@
 
 open! Base
 open Angstrom
+
+open LMisc
 open LAst
 
 (* ======= Utils ======= *)
-
-let list1_exn = function
-  | hd :: tl ->
-      (hd, tl)
-  | [] ->
-      raise (Invalid_argument "empty list")
-
 let unit = return ()
 
 let skip_ws = skip_while Char.is_whitespace
@@ -30,7 +25,7 @@ let ws1 =
   let paren = peek_char_fail >>= function '(' -> unit | _ -> fail "" in
   choice [skip Char.is_whitespace *> ws; paren *> skip_comments]
 
-let ident s = string s >>| fun x -> Id x
+let ident s = string s >>| fun x -> Id.I x
 
 let parens p = char '(' *> ws *> p <* ws <* char ')'
 let spaced p = ws1 *> p <* ws1
@@ -78,7 +73,7 @@ let pident flag =
   in
 
   let id = first ^ rest in
-  if is_keyword id then fail "keyword" else return (Id id)
+  if is_keyword id then fail "keyword" else return (Id.I id)
 
 let pconstruct_id =
   let keywords =
@@ -114,14 +109,14 @@ let pinfix_id ?starts () =
   let* rest = take_while is_op_char in
 
   let id = first ^ rest in
-  if is_keyword_op id then fail "keyword" else return (Id id)
+  if is_keyword_op id then fail "keyword" else return (Id.I id)
 
 let pprefix_id =
   let* first = string "!" in
   let* rest = take_while is_op_char in
 
   let id = first ^ rest in
-  if is_keyword_op id then fail "keyword" else return (Id id)
+  if is_keyword_op id then fail "keyword" else return (Id.I id)
 
 let pvalue_id =
   let pop_id = pinfix_id () <|> pprefix_id in
@@ -139,15 +134,15 @@ let pconst =
     | None ->
         fail "not an integer"
     | Some x ->
-        return (ConstInt x)
+        return (Const.Int x)
   in
 
-  let pchar = char '\'' *> any_char <* char '\'' >>| fun x -> ConstChar x in
+  let pchar = char '\'' *> any_char <* char '\'' >>| fun x -> Const.Char x in
 
   let pstring =
     char '"' *> take_till (Char.( = ) '"')
     <* advance 1
-    >>| fun x -> ConstString x
+    >>| fun x -> Const.String x
   in
 
   choice [pint; pchar; pstring]
@@ -162,7 +157,7 @@ let plet pexpr ppat pty =
   let pbinding =
     let pfun =
       let* id = pvalue_id in
-      let* args = ws1 *> sep_by1 ws1 ppat >>| list1_exn in
+      let* args = ws1 *> sep_by1 ws1 ppat >>| List1.of_list_exn in
       let* ty =
         opt (ws *> char ':')
         >>= function None -> return None | Some _ -> pty >>| Option.some
@@ -170,9 +165,9 @@ let plet pexpr ppat pty =
       let* expr = ws *> char '=' *> pexpr in
 
       let expr =
-        match ty with None -> expr | Some ty -> ExpConstraint (expr, ty)
+        match ty with None -> expr | Some ty -> Expr.Constraint (expr, ty)
       in
-      return {pat= PatVar id; expr= ExpFun (args, expr)}
+      return Expr.{pat= Pat.Var id; expr= Expr.Fun (args, expr)}
     in
 
     let psimple =
@@ -184,10 +179,10 @@ let plet pexpr ppat pty =
         | None ->
             return pat
         | Some _ ->
-            pty >>| fun ty -> PatConstraint (pat, ty)
+            pty >>| fun ty -> Pat.Constraint (pat, ty)
       in
       let* expr = ws *> char '=' *> pexpr in
-      return {pat; expr}
+      return Expr.{pat; expr}
     in
 
     pfun <|> psimple
@@ -196,9 +191,11 @@ let plet pexpr ppat pty =
   let* rec_flag =
     string "let"
     *> choice
-         [spaced (string "rec") *> return Recursive; ws1 *> return Nonrecursive]
+         [spaced (string "rec") *> return Expr.Rec; ws1 *> return Expr.Nonrec]
   in
-  let* bindings = sep_by1 (spaced (string "and")) pbinding >>| list1_exn in
+  let* bindings =
+    sep_by1 (spaced (string "and")) pbinding >>| List1.of_list_exn
+  in
 
   return (rec_flag, bindings)
 
@@ -206,22 +203,22 @@ let plet pexpr ppat pty =
 
 type 'oprnd operator =
   | Prefix of ('oprnd -> 'oprnd) t
-  | InfixN of ('oprnd list2 -> 'oprnd) t
+  | InfixN of ('oprnd List2.t -> 'oprnd) t
   | InfixL of ('oprnd -> 'oprnd -> 'oprnd) t
   | InfixR of ('oprnd -> 'oprnd -> 'oprnd) t
 
 let pprefix pop prhs =
   let pop_many =
-    let* hd, tl = many1 pop >>| list1_exn in
+    let* hd, tl = many1 pop >>| List1.of_list_exn in
     return @@ List.fold_left tl ~init:hd ~f:(fun acc f x -> acc (f x))
   in
   let* apply = option Fn.id pop_many in
   let* rhs = prhs in
   return (apply rhs)
 
-let pinfixn (pop : ('oprnd list2 -> 'oprnd) t) prhs fst =
+let pinfixn (pop : ('oprnd List2.t -> 'oprnd) t) prhs fst =
   let* apply = pop in
-  let* snd, tl = sep_by1 pop prhs >>| list1_exn in
+  let* snd, tl = sep_by1 pop prhs >>| List1.of_list_exn in
   return @@ apply (fst, snd, tl)
 
 let rec pinfixl pop prhs lhs =

@@ -10,8 +10,8 @@
 
 open! Base
 open Angstrom
-open LAst
 
+open LAst
 open Common
 
 (**
@@ -19,13 +19,13 @@ open Common
   [let rec ValId1 PArg1 = E1 and P1 = E2 and ...]
 *)
 let plet =
-  let* rec_flag, bindings = plet Expr.pexpr Pat.ppat Ty.pty in
+  let* rec_flag, bindings = plet PExpr.p PPat.p PTy.p in
   opt @@ spaced (string "in")
   >>= function
   | None ->
-      return (StrLet (rec_flag, bindings))
+      return (StrItem.Let (rec_flag, bindings))
   | Some _ ->
-      Expr.pexpr >>| fun expr -> StrEval (ExpLet (rec_flag, bindings, expr))
+      PExpr.p >>| fun expr -> StrItem.Eval (Expr.Let (rec_flag, bindings, expr))
 
 let pty_params_ =
   let pmultiple = parens @@ sep_by1 (ws *> char ',') (ws *> pty_var_id) in
@@ -37,9 +37,9 @@ let pconstruct_decl_ =
   let* id = pconstruct_id in
   let* arg =
     opt @@ spaced (string "of")
-    >>= function None -> return None | Some _ -> Ty.pty >>| Option.some
+    >>= function None -> return None | Some _ -> PTy.p >>| Option.some
   in
-  return {id; arg}
+  return StrItem.{id; arg}
 
 (** [type foo = Foo of string | Bar of int] *)
 let pty_decl =
@@ -50,12 +50,12 @@ let pty_decl =
     *> opt (string "|")
     *> sep_by1 (ws *> char '|') (ws *> pconstruct_decl_)
   in
-  return (StrType {id; params; variants})
+  return (StrItem.Type {id; params; variants})
 
-let peval = Expr.pexpr >>| fun expr -> StrEval expr
+let peval = PExpr.p >>| fun expr -> StrItem.Eval expr
 
 let pstr_item = ws *> choice [plet; pty_decl; peval]
 
-let pstr =
+let p =
   let sep = ws <* string ";;" <|> ws1 in
   sep_by sep pstr_item <* ws <* opt (string ";;")
