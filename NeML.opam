@@ -17,6 +17,7 @@ depends: [
   "ocaml"
   "dune" {>= "3.15"}
   "base"
+  "pprint"
   "stdio"
   "angstrom"
   "ppx_deriving"
