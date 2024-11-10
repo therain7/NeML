@@ -177,7 +177,7 @@ let table =
   let pinfix7 = ws *> ident "||" >>| ainfix in
 
   let ptuple = ws *> string "," >>| fun _ list2 -> Expr.Tuple list2 in
-  let pseq = ws *> string ";" >>| fun _ list2 -> Expr.Tuple list2 in
+  let pseq = ws *> string ";" >>| fun _ list2 -> Expr.Seq list2 in
 
   [ [Prefix pprefix1]
   ; [InfixL papply]
