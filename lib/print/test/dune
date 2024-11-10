@@ -1,5 +1,5 @@
 (library
- (name ParseTest)
+ (name PrintTest)
  (libraries base stdio LAst LParse LPrint)
  (preprocess
   (pps ppx_expect))

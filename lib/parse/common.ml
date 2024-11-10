@@ -82,23 +82,6 @@ let pconstruct_id =
   in
   pident `Capitalized <|> keywords
 
-(* https://ocaml.org/manual/5.0/lex.html#sss:lex-ops-symbols *)
-
-let is_op_first_char = function
-  | '$' | '&' | '*' | '+' | '-' | '/' | '=' | '<' | '>' | '@' | '^' | '|' | '%'
-    ->
-      true
-  | _ ->
-      false
-
-let is_op_char = function
-  | ch when is_op_first_char ch ->
-      true
-  | '~' | '!' | '?' | ':' | '.' ->
-      true
-  | _ ->
-      false
-
 let is_keyword_op = function "|" | "->" -> true | _ -> false
 
 let pinfix_id ?starts () =
